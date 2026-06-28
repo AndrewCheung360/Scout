@@ -1,0 +1,21 @@
+{
+  "name": "scout-spike",
+  "private": true,
+  "type": "module",
+  "description": "Quality spike for Scout — runs the research pipeline as a plain script to judge report quality before building durable infra.",
+  "scripts": {
+    "spike": "tsx src/spike.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.0",
+    "@ai-sdk/google": "^1.2.0",
+    "ai": "^4.3.0",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0"
+  }
+}

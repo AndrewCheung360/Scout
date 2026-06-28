@@ -1,0 +1,30 @@
+[
+  {
+    "query": "best noise-cancelling headphones under $300, comfortable with glasses",
+    "category": "audio",
+    "expectConfidenceNot": "Low",
+    "candidateHints": ["sony", "bose", "sennheiser"]
+  },
+  {
+    "query": "best ultrawide monitor for coding under $700",
+    "category": "monitors",
+    "expectConfidenceNot": "Low",
+    "candidateHints": ["dell", "lg", "samsung"]
+  },
+  {
+    "query": "a durable everyday backpack for a 15-inch laptop under $120",
+    "category": "bags",
+    "candidateHints": []
+  },
+  {
+    "query": "best mattress for side sleepers under $1200",
+    "category": "mattress",
+    "expectConfidence": "Low",
+    "note": "affiliate-contaminated category — confidence SHOULD be Low (G1)"
+  },
+  {
+    "query": "best beginner espresso machine under $500",
+    "category": "appliances",
+    "candidateHints": ["breville", "gaggia", "rancilio"]
+  }
+]
