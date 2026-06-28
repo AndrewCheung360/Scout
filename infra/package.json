@@ -1,0 +1,26 @@
+{
+  "name": "scout-infra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scout Phase 2 — watch/notify orchestration on AWS (CDK, TypeScript). G5: the deliberate AWS learning investment.",
+  "bin": {
+    "scout-infra": "bin/scout-watch.ts"
+  },
+  "scripts": {
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "aws-cdk": "^2.1027.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.260.0",
+    "constructs": "^10.4.2"
+  }
+}

@@ -10,6 +10,7 @@
     "start": "next start",
     "research": "tsx scripts/research.ts",
     "eval": "tsx evals/run.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

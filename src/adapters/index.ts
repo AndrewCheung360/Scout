@@ -22,3 +22,4 @@ export function defaultAdapters(): Adapters {
 }
 
 export * from './types.js';
+export { ResendNotifyAdapter, ConsoleNotifyAdapter, defaultNotifyAdapter } from './notify.js';
