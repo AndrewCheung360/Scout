@@ -7,7 +7,7 @@
 import { generateObject } from 'ai';
 import { models } from '../llm/profile.js';
 import { defaultAdapters, type Adapters } from '../adapters/index.js';
-import { scoreSource } from './trust.js';
+import { safeHost, scoreSource } from './trust.js';
 import { matchOffers } from '../catalog/dedup.js';
 import {
   candidatesSchema,
@@ -44,10 +44,13 @@ export async function runResearch(query: string, opts: RunOptions = {}): Promise
     const raw = [...(await adapters.search.search(`${c.name} review`, 3)), ...(await adapters.search.search(`${c.name} reddit problems`, 2))];
     const sources = raw.map(scoreSource);
     const agg = matchOffers(c.name, await adapters.offers.offers(c.name));
+    const sorted = [...agg.matched].sort((a, b) => a.priceValue! - b.priceValue!);
+    const topOffers = sorted.slice(0, 6);
+    if (agg.cheapest && !topOffers.some((o) => o.url === agg.cheapest!.url)) topOffers.push(agg.cheapest);
     dossier.push({
       product: c.name,
       sources: sources.map((s) => ({ url: s.url, host: s.host, credibility: s.credibility, flags: s.flags, snippet: s.content.slice(0, 400) })),
-      offers: agg.matched.slice(0, 6).map((o) => ({ retailer: o.retailer, price: o.price, url: o.url })),
+      offers: topOffers.map((o) => ({ retailer: o.retailer, price: o.price, url: o.url })),
       cheapest: agg.cheapest ? { retailer: agg.cheapest.retailer, price: agg.cheapest.price, url: agg.cheapest.url } : null,
       cheapestNote: agg.note,
     });
@@ -79,7 +82,7 @@ async function discoverCandidates(query: string, intent: Intent, adapters: Adapt
   ].map((q) => q.replace(/\s+/g, ' ').trim());
   const found = (await Promise.all(queries.map((q) => adapters.search.search(q, 5)))).flat();
   const sources = Array.from(new Map(found.map((s) => [s.url, s])).values());
-  const ctx = sources.map((s) => `- ${s.title} (${safeHostOf(s.url)}): ${s.content.slice(0, 300)}`).join('\n') || '(no search results)';
+  const ctx = sources.map((s) => `- ${s.title} (${safeHost(s.url)}): ${s.content.slice(0, 300)}`).join('\n') || '(no search results)';
 
   const { object } = await generateObject({
     model,
@@ -116,12 +119,4 @@ Rules:
 - Be concise and decision-useful.`,
   });
   return object;
-}
-
-function safeHostOf(u: string): string {
-  try {
-    return new URL(u).hostname.replace(/^www\./, '');
-  } catch {
-    return '';
-  }
 }
