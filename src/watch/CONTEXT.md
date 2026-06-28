@@ -6,7 +6,7 @@ Watches, threshold rules, scheduled re-checks, and alerts. Phase 2 is built: the
 
 - **Watch** — a user's standing interest in a product, with `rules` and a notification `channel`.
 - **Rule** — a threshold: price-drop %, price-below absolute, back-in-stock, or low-stock threshold.
-- **Alert** — a fired rule: recorded, deduped, and delivered (email first).
+- **Alert** — a fired rule: recorded, then delivered (email first) unless suppressed by the send-step cooldown (same watch + same primary reason type within 24h).
 - **Alert intent** — the decision output of a re-check (`recheck.ts`): which rules fired + the observation. Produced by the pipeline, rendered + delivered downstream — never sent inside the rule logic.
 
 ## Files

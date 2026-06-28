@@ -33,7 +33,8 @@ export type AlertReason =
   | { type: 'back_in_stock' }
   | { type: 'low_stock'; threshold: number; stockLevel: number };
 
-/** Pure evaluation: which rules fire for this observation. Delivery/dedup happens upstream. */
+/** Pure evaluation: which rules fire for this observation. Delivery and cooldown dedup happen
+ * in the send step (infra/lambda/send-alert.mjs), not here. */
 export function evaluateRules(rules: WatchRule[], obs: OfferObservation): AlertReason[] {
   const fired: AlertReason[] = [];
   for (const rule of rules) {

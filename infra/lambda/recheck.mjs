@@ -30,10 +30,13 @@ export const handler = async (event) => {
   const ports = {
     offers: new SerperOffersAdapter(serperApiKey),
     async getBaseline(productId) {
-      // Baseline = the lowest price observed in history; prior stock = the most-recent observation.
+      // Baseline = the lowest price observed in history; prior stock = the most-recent
+      // observation that actually recorded a stock state. Research save rows write in_stock
+      // NULL, so we filter those out — otherwise a NULL latest row would read as out-of-stock
+      // and fire a spurious back_in_stock alert on the first recheck.
       const { rows } = await db.query(
         `select min(price)::float8 as baseline,
-                (array_agg(in_stock order by observed_at desc))[1] as was_in_stock
+                (array_agg(in_stock order by observed_at desc) filter (where in_stock is not null))[1] as was_in_stock
            from price_history where product_id = $1`,
         [productId],
       );

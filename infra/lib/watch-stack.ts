@@ -140,11 +140,35 @@ export class ScoutWatchStack extends Stack {
       resultPath: '$.delivery',
     });
 
+    // When deep re-research ran, its re-validated intent supersedes the original recheck intent
+    // (the recheck flagged that observation as low-confidence). Same Lambda, deep-sourced payload.
+    const sendAlertFromDeep = new tasks.LambdaInvoke(this, 'SendAlertFromDeepResearch', {
+      lambdaFunction: sendAlertFn,
+      payloadResponseOnly: true,
+      payload: sfn.TaskInput.fromObject({ 'intent.$': '$.deepResearch.intent' }),
+      resultPath: '$.delivery',
+    });
+
     const noAlert = new sfn.Pass(this, 'NoAlert');
     const skipDeep = new sfn.Pass(this, 'SkipDeepResearch');
 
-    // After (optional) deep research, decide whether to alert.
+    // If deep research ran, decide purely on its result — it may clear an intent the recheck set,
+    // or set one the recheck couldn't trust. Either way the deep verdict wins.
+    const deepResolvedChoice = new sfn.Choice(this, 'DeepRuleFired?')
+      .when(
+        sfn.Condition.and(
+          sfn.Condition.isPresent('$.deepResearch.intent'),
+          sfn.Condition.isNotNull('$.deepResearch.intent'),
+        ),
+        sendAlertFromDeep,
+      )
+      .otherwise(noAlert);
+
+    // After (optional) deep research, decide whether to alert. The presence of $.deepResearch
+    // (the deep task's resultPath) means the deep branch ran and owns the decision; otherwise
+    // fall back to the original recheck intent.
     const alertChoice = new sfn.Choice(this, 'RuleFired?')
+      .when(sfn.Condition.isPresent('$.deepResearch'), deepResolvedChoice)
       .when(sfn.Condition.isNotNull('$.recheck.intent'), sendAlert)
       .otherwise(noAlert);
 
