@@ -26,12 +26,16 @@ const TRUSTED_RETAILERS = [
   'rei', 'home depot', "lowe's", 'lowes', 'crutchfield', 'adorama', 'macy', 'nordstrom',
 ];
 
+const TRUSTED_PATTERNS = TRUSTED_RETAILERS.map(
+  (t) => new RegExp(`(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i'),
+);
+
 function isTrusted(retailer: string): boolean {
   const r = retailer.toLowerCase().trim();
   // marketplace third-party sellers surface as "Walmart - seller", "eBay - seller",
   // "Amazon - seller", "Newegg.com - store" — not first-party trust. Exclude them.
   if (r.includes(' - ')) return false;
-  return TRUSTED_RETAILERS.some((t) => r.includes(t));
+  return TRUSTED_PATTERNS.some((re) => re.test(r));
 }
 
 function median(nums: number[]): number {

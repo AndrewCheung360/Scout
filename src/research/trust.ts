@@ -14,6 +14,10 @@ const DISCLOSURE_PATTERNS = DISCLOSURE_HINTS.map((h) => ({
   re: new RegExp(`(?:^|[^a-z0-9])${h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i'),
 }));
 
+function hostMatches(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
 export function safeHost(u: string): string {
   try {
     return new URL(u).hostname.replace(/^www\./, '');
@@ -27,8 +31,8 @@ export function scoreSource(s: SearchResult): Source {
   const text = (s.content || '').toLowerCase();
   const flags: string[] = [];
   for (const { hint, re } of DISCLOSURE_PATTERNS) if (re.test(text)) flags.push(`disclosure:${hint}`);
-  if (INDEPENDENT_HINTS.some((d) => host.endsWith(d))) flags.push('independent:lab-tested');
-  if (host.endsWith('reddit.com')) flags.push('community:forum');
+  if (INDEPENDENT_HINTS.some((d) => hostMatches(host, d))) flags.push('independent:lab-tested');
+  if (hostMatches(host, 'reddit.com')) flags.push('community:forum');
 
   let c = 0.6;
   if (flags.some((f) => f.startsWith('independent'))) c += 0.3;
