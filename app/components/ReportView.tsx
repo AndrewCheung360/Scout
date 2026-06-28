@@ -15,6 +15,15 @@ function host(u: string): string {
   }
 }
 
+function safeHref(u: string): string {
+  try {
+    const { protocol } = new URL(u);
+    return protocol === 'http:' || protocol === 'https:' ? u : '#';
+  } catch {
+    return '#';
+  }
+}
+
 function flagStyle(flag: string): string {
   if (flag.startsWith('independent')) return 'bg-emerald-500/15 text-emerald-300';
   if (flag.startsWith('disclosure')) return 'bg-rose-500/15 text-rose-300';
@@ -117,7 +126,7 @@ export default function ReportView({ result }: { result: ResearchResult }) {
                 <h3 className="font-semibold">{p.product}</h3>
                 {d?.cheapest ? (
                   <a
-                    href={d.cheapest.url}
+                    href={safeHref(d.cheapest.url)}
                     target="_blank"
                     rel="noreferrer"
                     className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300 ring-1 ring-emerald-500/30"
@@ -158,7 +167,7 @@ export default function ReportView({ result }: { result: ResearchResult }) {
                   <ul className="mt-2 space-y-1 text-sm">
                     {d.offers.map((o, j) => (
                       <li key={j} className="text-neutral-300">
-                        <a href={o.url} target="_blank" rel="noreferrer" className="hover:text-neutral-100">
+                        <a href={safeHref(o.url)} target="_blank" rel="noreferrer" className="hover:text-neutral-100">
                           {o.price} — {o.retailer}
                         </a>
                       </li>
@@ -177,7 +186,7 @@ export default function ReportView({ result }: { result: ResearchResult }) {
         <ul className="space-y-1 text-sm">
           {allSources.map((s, i) => (
             <li key={i} className="flex flex-wrap items-center gap-2">
-              <a href={s.url} target="_blank" rel="noreferrer" className="text-neutral-300 hover:text-neutral-100">
+              <a href={safeHref(s.url)} target="_blank" rel="noreferrer" className="text-neutral-300 hover:text-neutral-100">
                 {host(s.url)}
               </a>
               <span className="text-xs text-neutral-500">credibility {s.credibility.toFixed(2)}</span>
@@ -202,7 +211,7 @@ function Cites({ urls }: { urls: string[] }) {
   return (
     <>
       {urls.map((u, i) => (
-        <a key={i} href={u} target="_blank" rel="noreferrer" className="text-xs text-sky-400 hover:text-sky-300">
+        <a key={i} href={safeHref(u)} target="_blank" rel="noreferrer" className="text-xs text-sky-400 hover:text-sky-300">
           [{host(u)}]
         </a>
       ))}
