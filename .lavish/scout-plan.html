@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="luxury">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scout — Design Exploration</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true, theme: 'dark', securityLevel: 'loose',
+    flowchart: { htmlLabels: true, curve: 'basis' },
+    themeVariables: { primaryColor: '#1c1917', primaryBorderColor: '#b69121', lineColor: '#b69121', fontSize: '13px' }
+  });
+</script>
+<style>
+  .mermaid { background: var(--color-base-100); border-radius: 1rem; padding: 1rem; overflow-x: auto; }
+  .sec { scroll-margin-top: 5rem; }
+  .lead { max-width: 64ch; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .min0 { min-width: 0; }
+  table { font-size: 0.78rem; }
+</style>
+</head>
+<body class="bg-base-200 text-base-content">
+
+<div class="navbar bg-base-300/80 backdrop-blur sticky top-0 z-50 border-b border-base-content/10 px-4">
+  <div class="navbar-start min-w-0">
+    <span class="text-xl font-bold tracking-tight">🧭 Scout</span>
+    <span class="ml-3 text-sm opacity-60 hidden md:inline truncate">Design exploration — v3 · grilling</span>
+  </div>
+  <div class="navbar-end">
+    <div class="hidden lg:flex">
+      <ul class="menu menu-horizontal gap-1 text-xs">
+        <li><a href="#wrapper" class="font-semibold text-warning">Wrapper?</a></li>
+        <li><a href="#ux">UX</a></li>
+        <li><a href="#trust">Trust</a></li>
+        <li><a href="#arch">Arch</a></li>
+        <li><a href="#stack">Stack ★</a></li>
+        <li><a href="#grill" class="font-semibold text-error">🔥 Grill</a></li>
+      </ul>
+    </div>
+    <a href="#grill" class="btn btn-error btn-sm lg:hidden">🔥 Grill</a>
+  </div>
+</div>
+
+<main class="mx-auto max-w-6xl p-5 lg:p-8 space-y-12">
+
+  <section class="hero bg-base-100 rounded-box border border-base-content/10">
+    <div class="hero-content flex-col items-start gap-4 py-8">
+      <span class="badge badge-error badge-soft">Now in grilling mode 🔥</span>
+      <h1 class="text-3xl lg:text-4xl font-bold leading-tight">Stress-testing the plan until we genuinely agree.</h1>
+      <p class="lead opacity-80">Two things this round: <strong>(1)</strong> a much deeper stack analysis — cheaper models, gateways like OpenRouter, AWS/GCP cloud-native vs third-party vs self-host, with pros/cons and the <em>why</em> (§5); and <strong>(2)</strong> a relentless grilling of the whole design, <strong>one hard question at a time</strong>, starting at the bottom (§Grill). I'll challenge my own recommendations and yours.</p>
+    </div>
+  </section>
+
+  <!-- ============ §0 WRAPPER QUESTION ============ -->
+  <section id="wrapper" class="sec space-y-5">
+    <h2 class="text-2xl font-bold">0 · "Is this just a wrapper that costs more in API calls?"</h2>
+    <p class="lead opacity-80">The honest answer: <strong>for a single one-shot question, a frontier chat LLM with web search is genuinely close to good-enough</strong> — and Scout costs marginally more for that one query. So Scout must <em>not</em> position as "a nicer way to ask once." Its reason to exist is the set of things a stateless chat model <strong>structurally cannot do.</strong></p>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <div class="card card-border bg-base-100 border-error/30"><div class="card-body p-5">
+        <h3 class="card-title text-base text-error">Where the wrapper critique is RIGHT</h3>
+        <ul class="text-sm opacity-80 space-y-1.5 mt-1">
+          <li>• One-shot "best X under $Y" → ChatGPT/Gemini/Google AI Mode answer fine.</li>
+          <li>• For that single call, Scout pays more (LLM + search + SERP).</li>
+          <li>• "It searched the web and summarized" is <em>not</em> a moat — everyone has that.</li>
+        </ul>
+        <p class="text-xs opacity-60 mt-2">⇒ Don't sell the one-shot. It's a losing fight against free frontier chat.</p>
+      </div></div>
+      <div class="card card-border bg-base-100 border-success/40"><div class="card-body p-5">
+        <h3 class="card-title text-base text-success">What chat models STRUCTURALLY can't do (the moat)</h3>
+        <ul class="text-sm opacity-80 space-y-1.5 mt-1">
+          <li>🔔 <strong>Watch &amp; notify over time.</strong> Stateless models can't monitor price/stock and alert you. Needs a persistent backend — a real product.</li>
+          <li>💸 <strong>Verifiable live pricing.</strong> Chat hallucinates prices &amp; stale stock. Scout grounds "cheapest now" in a Shopping API + enforced citations.</li>
+          <li>🛡️ <strong>Auditable trust layer.</strong> Chat launders sources into one voice; Scout flags sponsorship/bias and surfaces dissent (§2).</li>
+          <li>🗃️ <strong>Accumulating data.</strong> Canonical catalog + price history + credibility compound; a chat thread is ephemeral.</li>
+        </ul>
+      </div></div>
+    </div>
+    <div role="alert" class="alert alert-warning alert-soft items-start">
+      <span><strong>The real incumbent isn't ChatGPT — it's Google.</strong> Google Shopping + AI Overviews + price tracking already does much of this. Scout's wedge vs. Google: <strong>cross-retailer neutrality</strong> (ads are Google's business), an <strong>explicit trust/bias layer</strong>, and <strong>multi-source depth</strong>. Defensible, but Google is the gorilla. (This is grill question G6.)</span>
+    </div>
+  </section>
+
+  <!-- ============ §1 UX ============ -->
+  <section id="ux" class="sec space-y-5">
+    <h2 class="text-2xl font-bold">1 · What we display, and how (UX)</h2>
+    <p class="lead opacity-80">The report is the product, so here's a concrete mock. Comparison columns are <strong>discovered per query</strong>. Every claim is cited + credibility-tagged. A <strong>chat dock</strong> answers follow-ups grounded in gathered evidence.</p>
+    <div class="mockup-browser border border-base-content/20 bg-base-300">
+      <div class="mockup-browser-toolbar"><div class="input text-xs">scout.app/report — "best noise-cancelling headphones under $300, comfy for glasses"</div></div>
+      <div class="bg-base-100 p-4 lg:p-6 space-y-4">
+        <div class="flex flex-wrap gap-2 items-center">
+          <span class="badge badge-soft badge-primary">budget ≤ $300</span>
+          <span class="badge badge-soft badge-primary">strong ANC</span>
+          <span class="badge badge-soft badge-primary">glasses-friendly</span>
+          <span class="badge badge-success badge-sm ml-auto" title="strong independent-source coverage for this category">confidence: High</span>
+          <button class="btn btn-ghost btn-xs">✎ edit intent</button>
+        </div>
+        <div class="grid gap-3 md:grid-cols-3">
+          <div class="card card-border bg-base-200 min0"><div class="card-body p-4">
+            <div class="flex justify-between items-start"><span class="badge badge-success badge-sm">Best overall</span><span class="badge badge-ghost badge-xs">★ 8.7</span></div>
+            <h4 class="font-semibold text-sm mt-1">Sony WH-1000XM5</h4>
+            <p class="text-xs opacity-70">Class-leading ANC; works with glasses.</p>
+            <div class="text-sm mt-1"><span class="font-bold text-success">$278</span> <span class="opacity-50 line-through text-xs">$399</span> · Best Buy</div>
+            <div class="flex gap-1 mt-1"><button class="btn btn-primary btn-xs">Where to buy</button><button class="btn btn-ghost btn-xs">👁 Watch</button></div>
+          </div></div>
+          <div class="card card-border bg-base-200 min0"><div class="card-body p-4">
+            <div class="flex justify-between items-start"><span class="badge badge-info badge-sm">Best value</span><span class="badge badge-ghost badge-xs">★ 8.1</span></div>
+            <h4 class="font-semibold text-sm mt-1">Sennheiser ACCENTUM+</h4>
+            <p class="text-xs opacity-70">90% of the XM5 for less.</p>
+            <div class="text-sm mt-1"><span class="font-bold text-success">$199</span> · Amazon</div>
+            <div class="flex gap-1 mt-1"><button class="btn btn-primary btn-xs">Where to buy</button><button class="btn btn-ghost btn-xs">👁 Watch</button></div>
+          </div></div>
+          <div class="card card-border bg-base-200 min0"><div class="card-body p-4">
+            <div class="flex justify-between items-start"><span class="badge badge-secondary badge-sm">Most comfy</span><span class="badge badge-ghost badge-xs">★ 7.9</span></div>
+            <h4 class="font-semibold text-sm mt-1">Bose QC Ultra</h4>
+            <p class="text-xs opacity-70">Softest clamp for glasses.</p>
+            <div class="text-sm mt-1"><span class="font-bold">$299</span> · Bose.com</div>
+            <div class="flex gap-1 mt-1"><button class="btn btn-primary btn-xs">Where to buy</button><button class="btn btn-ghost btn-xs">👁 Watch</button></div>
+          </div></div>
+        </div>
+        <div class="overflow-x-auto rounded-box border border-base-content/10">
+          <table class="table table-zebra table-xs">
+            <thead><tr><th>Model</th><th>ANC</th><th>Battery</th><th>Glasses</th><th>Cheapest</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="font-medium">Sony XM5</td><td>★★★★★ <span class="opacity-40">[3]</span></td><td>30h</td><td>★★★★</td><td class="text-success font-semibold">$278</td><td><button class="btn btn-ghost btn-xs">details</button></td></tr>
+              <tr><td class="font-medium">Sennheiser</td><td>★★★★ <span class="opacity-40">[5]</span></td><td>50h</td><td>★★★★</td><td class="text-success font-semibold">$199</td><td><button class="btn btn-ghost btn-xs">details</button></td></tr>
+              <tr><td class="font-medium">Bose QC Ultra</td><td>★★★★★ <span class="opacity-40">[2]</span></td><td>24h</td><td>★★★★★</td><td>$299</td><td><button class="btn btn-ghost btn-xs">details</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-2">
+          <div class="card card-border bg-base-200"><div class="card-body p-4">
+            <h4 class="font-semibold text-sm">Sony XM5 — pros / cons (synthesized)</h4>
+            <ul class="text-xs opacity-80 space-y-1 mt-1">
+              <li>＋ Best-in-class ANC <span class="badge badge-ghost badge-xs">RTINGS [3] · independent</span></li>
+              <li>＋ Comfortable over glasses <span class="badge badge-ghost badge-xs">r/headphones [7]</span></li>
+              <li>－ Case doesn't fold flat <span class="badge badge-warning badge-xs">dissent surfaced</span></li>
+              <li>－ Some report cracking hinge <span class="badge badge-warning badge-xs">3 forum reports [9]</span></li>
+            </ul>
+          </div></div>
+          <div class="card card-border bg-base-200"><div class="card-body p-4">
+            <h4 class="font-semibold text-sm">Sources &amp; credibility (auditable)</h4>
+            <ul class="text-xs opacity-80 space-y-1 mt-1">
+              <li>[3] RTINGS — lab-tested <span class="badge badge-success badge-xs">independent · 9.1</span></li>
+              <li>[5] YouTube review <span class="badge badge-error badge-xs">#sponsored · down-weighted</span></li>
+              <li>[7] r/headphones <span class="badge badge-info badge-xs">community · 7.0</span></li>
+              <li>[9] forum complaints <span class="badge badge-warning badge-xs">minority · shown anyway</span></li>
+            </ul>
+          </div></div>
+        </div>
+        <div class="grid gap-3 lg:grid-cols-3">
+          <div class="card card-border bg-base-200 lg:col-span-2"><div class="card-body p-4">
+            <h4 class="font-semibold text-sm">Where to buy — Sony XM5</h4>
+            <div class="overflow-x-auto"><table class="table table-xs"><tbody>
+              <tr class="bg-success/10"><td>Best Buy</td><td class="text-success font-bold">$278 ✓ cheapest</td><td>In stock</td><td><button class="btn btn-primary btn-xs">Buy →</button></td></tr>
+              <tr><td>Amazon</td><td>$289</td><td>In stock</td><td><button class="btn btn-ghost btn-xs">Buy →</button></td></tr>
+              <tr><td>Sony.com</td><td>$399</td><td>In stock</td><td><button class="btn btn-ghost btn-xs">Buy →</button></td></tr>
+            </tbody></table></div>
+          </div></div>
+          <div class="card card-border bg-base-200"><div class="card-body p-4">
+            <h4 class="font-semibold text-sm">💬 Ask Scout</h4>
+            <div class="chat chat-start"><div class="chat-bubble chat-bubble-primary text-xs">Comes in blue?</div></div>
+            <div class="chat chat-end"><div class="chat-bubble text-xs">Yes — blue &amp; black, $278 at Best Buy [1].</div></div>
+            <input class="input input-bordered input-xs w-full mt-1" placeholder="ask a follow-up…">
+          </div></div>
+        </div>
+      </div>
+    </div>
+    <p class="text-xs opacity-60">Illustrative mock (Lavish-fallback design system, not Scout's brand — no codebase yet). Pins down the information architecture.</p>
+  </section>
+
+  <!-- ============ §2 TRUST ============ -->
+  <section id="trust" class="sec space-y-5">
+    <h2 class="text-2xl font-bold">2 · Detecting bias / sponsorship / bots, and where we search</h2>
+    <div class="grid gap-4 lg:grid-cols-2">
+      <div class="card card-border bg-base-100"><div class="card-body p-5">
+        <h3 class="card-title text-base">How we detect bad sources</h3>
+        <div class="text-sm opacity-80 space-y-2 mt-1">
+          <p>🏷️ <strong>Sponsorship / conflict:</strong> markers (#ad, "gifted"), affiliate-link density, brand-owned domains, thin affiliate farms. LLM classifies using these features.</p>
+          <p>🤖 <strong>Bot / fake review:</strong> review-burst patterns, templated language, unnatural rating distributions, generic praise; Reddit account-age/karma where available.</p>
+          <p>🎯 <strong>Irrelevant / stale:</strong> semantic relevance to model + criteria; recency; wrong-variant detection.</p>
+          <p>⚖️ <strong>Credibility score:</strong> independence + original-testing + cross-source corroboration → a per-source score that weights synthesis and is <em>shown</em>.</p>
+          <p>👁 <strong>Surface, don't suppress:</strong> flagged sources shown with the flag; legit dissent surfaced.</p>
+        </div>
+        <p class="text-xs opacity-60 mt-1">Honest: perfect detection is impossible — value is being systematic &amp; transparent. (This is grill question G3.)</p>
+      </div></div>
+      <div class="card card-border bg-base-100"><div class="card-body p-5">
+        <h3 class="card-title text-base">How we decide where to search</h3>
+        <div class="text-sm opacity-80 space-y-2 mt-1">
+          <p>🧭 <strong>Tiered taxonomy</strong> per query:</p>
+          <ol class="list-decimal ml-5 space-y-1 text-xs">
+            <li><strong>Live offers</strong> → Shopping SERP.</li>
+            <li><strong>Expert reviews</strong> → web search, quality allowlist + open discovery.</li>
+            <li><strong>Community/forums</strong> → web search hitting Reddit (+ optional API).</li>
+            <li><strong>Video</strong> → YouTube API.</li>
+            <li><strong>Retailer ratings / Q&amp;A.</strong></li>
+          </ol>
+          <p>🎯 <strong>Targeted per-criterion queries</strong>, not one generic search.</p>
+          <p>✅ Require ≥N independent sources per claim; explicitly seek a dissenting source.</p>
+        </div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ §3 ARCHITECTURE ============ -->
+  <section id="arch" class="sec space-y-5">
+    <h2 class="text-2xl font-bold">3 · Architecture — options &amp; tradeoffs</h2>
+    <div class="grid gap-4 lg:grid-cols-3">
+      <div class="card card-border bg-base-100 border-error/30 min0"><div class="card-body p-5">
+        <span class="badge badge-error badge-soft badge-sm">Option A</span>
+        <h3 class="card-title text-base">Thin LLM agent</h3>
+        <p class="text-xs opacity-75">One agentic loop does it all; minimal persistence.</p>
+        <div class="text-xs mt-2"><span class="text-success">＋</span> simplest, cheapest, fastest</div>
+        <div class="text-xs"><span class="text-error">－</span> weak control; can't enforce citations; nowhere to cache/score trust; <strong>this IS the wrapper</strong></div>
+      </div></div>
+      <div class="card card-border bg-base-100 border-primary/50 min0"><div class="card-body p-5">
+        <span class="badge badge-primary badge-soft badge-sm">Option B</span>
+        <h3 class="card-title text-base">Structured pipeline + workflow</h3>
+        <p class="text-xs opacity-75">Explicit stages on a durable engine; persistence; caching; watches native.</p>
+        <div class="text-xs mt-2"><span class="text-success">＋</span> control, cost ctrl, the data moat</div>
+        <div class="text-xs"><span class="text-error">－</span> more infra &amp; code</div>
+      </div></div>
+      <div class="card card-border bg-base-100 border-success/50 min0"><div class="card-body p-5">
+        <span class="badge badge-success badge-soft badge-sm">Option C ✓</span>
+        <h3 class="card-title text-base">Hybrid: B skeleton + agentic sub-steps</h3>
+        <p class="text-xs opacity-75">Deterministic skeleton; bounded agentic loops inside adaptive stages.</p>
+        <div class="text-xs mt-2"><span class="text-success">＋</span> control + flexibility → best quality</div>
+        <div class="text-xs"><span class="text-error">－</span> most design effort</div>
+      </div></div>
+    </div>
+    <div role="alert" class="alert alert-success alert-soft items-start">
+      <span><strong>The reframe:</strong> the deepest problem is <strong>trust + monitoring</strong>, not "summarize search." So center the <strong>accumulating data layer</strong> (catalog, price history, credibility) — <em>that durable data is the real moat.</em> The pipeline fills it; watches exploit it. Build orchestration/trust/catalog ourselves; rent LLM + search + SERP.</span>
+    </div>
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-sm font-semibold">Data flow + category-agnostic pipeline (diagrams)</summary>
+      <div class="collapse-content space-y-3">
+        <pre class="mermaid">
+flowchart TD
+  U["User intent"] --> APP["Web app — streams progress"]
+  APP -->|"enqueue"| PIPE["Pipeline (durable workflow)<br/>Claude + agentic sub-steps"]
+  PIPE --> ADP{"Source Adapters"}
+  ADP --> WS["web-search"]
+  ADP --> SERP["Shopping SERP"]
+  ADP --> YT["YouTube"]
+  PIPE -->|"persist (the moat)"| DB[("Postgres: catalog · offers<br/>price_history · sources · watches<br/>conversations (pgvector)")]
+  DB --> WATCH["Watch cron"] -->|"fires"| MAIL["Email alert"]
+  DB --> CHAT["Chat: RAG over sources"]
+  DB --> APP
+        </pre>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ §4 DATA SOURCING ============ -->
+  <section id="data" class="sec space-y-3">
+    <h2 class="text-2xl font-bold">4 · Data-sourcing feasibility <span class="badge badge-soft badge-error align-middle">grounded</span></h2>
+    <div class="grid gap-3 lg:grid-cols-2">
+      <div role="alert" class="alert alert-error alert-soft items-start"><span><strong>Amazon PA-API deprecated (May 15 2026)</strong>, no new customers. Get Amazon prices via Shopping SERP; affiliate (Creators API) only once there's traffic.</span></div>
+      <div role="alert" class="alert alert-warning alert-soft items-start"><span><strong>Reddit free API non-commercial</strong> (commercial ~$12k/yr). Reach forum content via web-search; direct API only personal phase.</span></div>
+    </div>
+    <p class="text-xs opacity-60">Verdicts: web-search = core · Google Shopping SERP (Serper.dev $0.30–1/1k) = core · YouTube API = supplementary · Reddit = personal-only · Amazon PA-API = avoid · scraping = not core. All behind <code>SearchAdapter</code>/<code>OffersAdapter</code>/<code>ReviewAdapter</code>; <code>OffersAdapter</code> carries <code>affiliate_url</code> from day one.</p>
+  </section>
+
+  <!-- ============ §5 DEEP STACK ANALYSIS ============ -->
+  <section id="stack" class="sec space-y-5">
+    <h2 class="text-2xl font-bold">5 · Stack — deep per-layer analysis ★</h2>
+    <p class="lead opacity-80">Per your ask: more options (incl. cheaper models &amp; gateways like OpenRouter), AWS/GCP cloud-native and self-host/direct alternatives, with pros/cons and the <em>why</em>. Each layer is a drawer — open the ones you care about.</p>
+
+    <div class="alert alert-soft items-start text-sm">
+      <span><strong>Decision lens (applies to every layer):</strong>
+        <span class="badge badge-sm badge-primary">3rd-party</span> fastest, low-ops, small markup, some lock-in ·
+        <span class="badge badge-sm badge-secondary">cloud-native (AWS/GCP)</span> consolidation, credits, compliance, more setup/ops ·
+        <span class="badge badge-sm badge-accent">self-host / direct</span> lowest marginal cost, no lock-in, you operate it.
+        <br/>For personal+portfolio-first I lean <strong>3rd-party + a couple of direct-on-Postgres choices</strong> to avoid ops sprawl, keeping cloud-native as the scale path. That bias is itself grill question G5.</span>
+    </div>
+
+    <!-- LLM ACCESS / GATEWAY -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box" open>
+      <summary class="collapse-title text-base font-semibold">5a · LLM access &amp; gateway <span class="badge badge-xs badge-warning badge-soft">your question</span></summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Option</th><th>Pros</th><th>Cons</th></tr></thead>
+          <tbody>
+            <tr><td class="font-medium">Direct provider SDKs<br/><span class="opacity-50">Anthropic + Google</span></td><td>cheapest per-token; full feature access — Claude's server-side <strong>web-search tool</strong>, prompt caching, structured outputs</td><td>per-provider integration; you manage 2 keys</td></tr>
+            <tr><td class="font-medium">OpenRouter<br/><span class="opacity-50">gateway</span></td><td>one key → 100s of models incl. cheap open models; auto fallback &amp; price routing; trivial experimentation</td><td>~5% markup; some provider-native features (Anthropic web-search server tool, full prompt-cache control) may not pass through cleanly; extra data-handling hop to vet</td></tr>
+            <tr><td class="font-medium">LiteLLM (self-host proxy)<br/><span class="opacity-50">direct</span></td><td>provider-agnostic, no markup, central cost tracking &amp; budgets/keys</td><td>you run &amp; secure the proxy</td></tr>
+            <tr><td class="font-medium">Vercel AI SDK<br/><span class="opacity-50">library, not a gateway</span></td><td>clean provider abstraction + streaming + tool-calls in TS; pairs with direct keys <em>or</em> OpenRouter</td><td>it's a client lib — doesn't itself reduce cost</td></tr>
+            <tr><td class="font-medium">AWS Bedrock / GCP Vertex<br/><span class="opacity-50">cloud-native</span></td><td>one-vendor billing, enterprise compliance, credits; Claude + others</td><td>setup overhead; feature lag — e.g. <strong>Claude web-search isn't on Bedrock</strong>; Vertex only has the basic web-search variant</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> <strong>Vercel AI SDK</strong> (the abstraction) + <strong>direct Anthropic &amp; Google keys</strong> for the models we actually run, and keep <strong>OpenRouter as a one-line escape hatch</strong> for trying cheap open models / fallback. Direct keys preserve Claude's web-search tool + prompt caching (our biggest cost lever) which gateways/Bedrock may drop. Revisit Bedrock/Vertex only if compliance or cloud credits pull us there.</span></div>
+      </div>
+    </details>
+
+    <!-- MODELS -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-base font-semibold">5b · Models by role (cheaper options included)</summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Model</th><th>$/1M in·out</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td>Claude Opus 4.8 ✓ synthesis</td><td>$5 · $25</td><td>hard reasoning, criteria discovery, final report</td></tr>
+            <tr><td>Claude Sonnet 4.6</td><td>$3 · $15</td><td>cheaper synthesis fallback</td></tr>
+            <tr><td>Claude Haiku 4.5 ✓ bulk</td><td>$1 · $5</td><td>extraction / classification</td></tr>
+            <tr><td>Gemini 2.5 Flash</td><td>$0.30 · $2.50</td><td>cheap bulk + long context</td></tr>
+            <tr><td>Gemini 2.5 Flash-Lite</td><td>$0.10 · $0.40</td><td>cheapest hosted bulk tier</td></tr>
+            <tr><td>Open (Llama / Qwen / DeepSeek)<br/><span class="opacity-50">via Groq / Together / Fireworks / DeepInfra</span></td><td>~$0.10–0.60</td><td>ultra-cheap, very fast classification at scale; self-host later for $0 marginal</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> <strong>Opus 4.8 for synthesis</strong> (quality is the product; it's a small share of calls), <strong>Haiku 4.5 or Gemini Flash-Lite for the high-volume extraction/classification</strong> — that cheap tier is the dominant cost lever (~10× swing). Provider-abstracted so we can drop an open model (Groq) into the bulk tier if volume explodes. Don't over-optimize early; the cheap tier + caching matters more than shaving the synthesis model.</span></div>
+      </div>
+    </details>
+
+    <!-- SEARCH -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-base font-semibold">5c · Web-research search</summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Option</th><th>Cost</th><th>Pros / Cons</th></tr></thead>
+          <tbody>
+            <tr><td>Claude web-search tool ✓</td><td>$10/1k + tok</td><td>＋ zero extra vendor, integrated tool-use, dynamic filtering · － priciest per call</td></tr>
+            <tr><td>Exa</td><td>free 1k/mo; $5–7/1k</td><td>＋ neural/semantic, research-tuned, cheaper · － separate vendor</td></tr>
+            <tr><td>Tavily</td><td>free 1k/mo; ~$8/1k</td><td>＋ agent-research oriented, returns clean content · － mid cost</td></tr>
+            <tr><td>Brave Search API</td><td>~$3–5/1k</td><td>＋ independent index, cheap · － raw results, you fetch/parse</td></tr>
+            <tr><td>Google Programmable Search<br/><span class="opacity-50">cloud-native-ish</span></td><td>free 100/day then $5/1k</td><td>＋ Google quality · － 10k/day cap, ToS limits</td></tr>
+            <tr><td>SearXNG + reader (Jina/Firecrawl)<br/><span class="opacity-50">self-host / direct</span></td><td>infra only</td><td>＋ ~$0 marginal, no vendor · － you run it, reliability is yours</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> start with <strong>Claude web-search</strong> (simplest, one less integration while we validate quality), swap to <strong>Exa or Brave</strong> behind <code>SearchAdapter</code> when call volume makes cost bite. Self-hosted SearXNG is the eventual zero-marginal-cost path if this scales.</span></div>
+      </div>
+    </details>
+
+    <!-- SHOPPING -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-base font-semibold">5d · Shopping / price data</summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Option</th><th>Cost</th><th>Pros / Cons</th></tr></thead>
+          <tbody>
+            <tr><td>Serper.dev (Shopping) ✓</td><td>2,500 free; $0.30–1/1k</td><td>＋ cheapest, fast, Google Shopping coverage · － 3rd-party SERP (ToS lives with them)</td></tr>
+            <tr><td>SerpApi (Shopping)</td><td>250 free; ~$25/1k</td><td>＋ clean docs, reliable · － ~25–80× pricier</td></tr>
+            <tr><td>Official affiliate APIs<br/><span class="opacity-50">eBay, Best Buy, Walmart IO, Rainforest/Canopy for Amazon</span></td><td>free–varies</td><td>＋ sanctioned data + <strong>revenue</strong> · － per-retailer, gated approval, Amazon gating</td></tr>
+            <tr><td>Bright Data / Oxylabs<br/><span class="opacity-50">scraping infra</span></td><td>$$$</td><td>＋ broad coverage, robust · － expensive, ToS/legal weight</td></tr>
+            <tr><td>Build-your-own scraper<br/><span class="opacity-50">direct</span></td><td>infra</td><td>＋ full control · － anti-bot arms race, brittle, legal exposure — avoid as core</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> <strong>Serper.dev Shopping now</strong> (generalist + cheap), then layer <strong>official affiliate APIs</strong> for the retailers we send the most traffic to (data quality + monetization in one move). Bright Data only if SERP coverage has real gaps.</span></div>
+      </div>
+    </details>
+
+    <!-- WORKFLOW -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-base font-semibold">5e · Async / workflow / cron <span class="badge badge-xs badge-secondary badge-soft">cloud-native options here</span></summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Option</th><th>Type</th><th>Pros / Cons</th></tr></thead>
+          <tbody>
+            <tr><td>Inngest ✓</td><td>3rd-party</td><td>＋ durable steps + retries + cron in one, superb DX, free tier · － vendor dependency</td></tr>
+            <tr><td>Trigger.dev</td><td>3rd-party</td><td>＋ similar, OSS-core, self-hostable · － younger</td></tr>
+            <tr><td>Temporal (Cloud / self-host)</td><td>3rd / direct</td><td>＋ battle-tested durability · － heavier model + ops</td></tr>
+            <tr><td>AWS Step Functions + Lambda + EventBridge Scheduler</td><td>cloud-native</td><td>＋ fully managed, scales, credits · － verbose, AWS lock-in, 60-min Lambda cap nuances for long LLM steps</td></tr>
+            <tr><td>GCP Workflows + Cloud Run + Cloud Tasks/Scheduler</td><td>cloud-native</td><td>＋ Cloud Run handles long jobs well · － more glue than Inngest</td></tr>
+            <tr><td>Cloudflare Workflows + Queues + Cron</td><td>cloud-native</td><td>＋ cheap, edge, durable execution · － newer, Workers runtime limits</td></tr>
+            <tr><td>Graphile Worker / pg-boss<br/><span class="opacity-50">on Postgres</span></td><td>direct</td><td>＋ <strong>no new vendor — runs on our DB</strong>, simple cron/queue · － you build retry/observability ergonomics</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> <strong>Inngest</strong> for the DX win now (long research jobs + watch cron + retries, free tier). If we want to <em>avoid any extra vendor</em>, <strong>Graphile Worker on Postgres</strong> is the strong direct alternative (we already have Postgres). <strong>AWS Step Functions / Cloudflare Workflows</strong> are the cloud-native scale paths — revisit if we standardize on a cloud.</span></div>
+      </div>
+    </details>
+
+    <!-- DB -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-base font-semibold">5f · Database + vector + time-series</summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Option</th><th>Type</th><th>Pros / Cons</th></tr></thead>
+          <tbody>
+            <tr><td>Postgres — Supabase ✓</td><td>3rd-party</td><td>＋ Postgres + Auth + storage + pgvector, generous free tier · － managed-vendor</td></tr>
+            <tr><td>Postgres — Neon</td><td>3rd-party</td><td>＋ serverless, branching, cheap · － bring your own auth</td></tr>
+            <tr><td>AWS RDS/Aurora · GCP Cloud SQL/AlloyDB</td><td>cloud-native</td><td>＋ scale, compliance · － ops + cost floor</td></tr>
+            <tr><td>Firestore (Firebase)</td><td>3rd-party</td><td>＋ all-in-one, realtime · － <strong>weak for price-history time-series + relational offer comparison</strong></td></tr>
+            <tr><td>pgvector vs Pinecone/Qdrant/Weaviate</td><td>—</td><td>＋ pgvector keeps chat-RAG <strong>in one DB</strong> · － dedicated vector DBs scale better at huge corpora (we won't be there early)</td></tr>
+            <tr><td>Timescale extension</td><td>—</td><td>＋ better price-history at scale · － add when history volume warrants</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> <strong>Postgres + pgvector via Supabase</strong> (or Neon). Relational offers + time-series price history + chat-RAG all live in <em>one</em> store — minimal ops. Firestore is rejected for the core because price history &amp; cross-retailer comparison are relational. AlloyDB/Aurora is the cloud-native upgrade later.</span></div>
+      </div>
+    </details>
+
+    <!-- HOSTING + FRONTEND -->
+    <details class="collapse collapse-arrow bg-base-100 border border-base-content/10 rounded-box">
+      <summary class="collapse-title text-base font-semibold">5g · Hosting &amp; frontend framework</summary>
+      <div class="collapse-content space-y-2">
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Hosting</th><th>Pros / Cons</th></tr></thead>
+          <tbody>
+            <tr><td>Vercel ✓</td><td>＋ best Next.js DX, streaming, free tier · － priciest at scale, some lock-in</td></tr>
+            <tr><td>Cloudflare Pages/Workers</td><td>＋ cheap, edge, portable · － runtime limits for heavy server work</td></tr>
+            <tr><td>GCP Cloud Run / Firebase App Hosting</td><td>＋ long-running jobs, scales to zero · － more config</td></tr>
+            <tr><td>AWS Amplify / ECS / App Runner</td><td>＋ full control, credits · － most ops</td></tr>
+            <tr><td>Railway / Render / Fly.io</td><td>＋ simple, cheap, portable · － smaller ecosystems</td></tr>
+          </tbody>
+        </table></div>
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <thead><tr><th>Frontend</th><th>Pros / Cons</th></tr></thead>
+          <tbody>
+            <tr><td>Next.js ✓</td><td>＋ RSC streaming for live report progress, huge ecosystem · － React-heavy</td></tr>
+            <tr><td>Remix / React Router</td><td>＋ great data loading · － smaller</td></tr>
+            <tr><td>SvelteKit</td><td>＋ lean, fast · － smaller ecosystem</td></tr>
+            <tr><td>Expo Router (universal)</td><td>＋ reuse for mobile later · － web reports render less richly</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-success alert-soft text-sm"><span><strong>Pick &amp; why:</strong> <strong>Next.js on Vercel</strong> for the report-streaming DX now; keep the app <strong>portable</strong> (avoid deep Vercel-only primitives) so <strong>Cloud Run / Cloudflare</strong> stay open as cheaper scale targets. Expo only if mobile becomes the priority.</span></div>
+      </div>
+    </details>
+
+    <div role="alert" class="alert alert-soft items-start text-sm">
+      <span><strong>Recommended starting stack (all swappable):</strong> Next.js/Vercel · Vercel AI SDK + direct Anthropic+Google keys (OpenRouter as escape hatch) · Opus 4.8 synth / Haiku 4.5 or Gemini Flash-Lite bulk · Claude web-search → Exa later · Serper.dev Shopping → affiliate APIs later · Inngest (or Graphile Worker to avoid a vendor) · Postgres+pgvector (Supabase) · Resend email. Per-report cost stays in cents / free tiers early.</span>
+    </div>
+  </section>
+
+  <!-- ============ §6 ROADMAP ============ -->
+  <section class="sec space-y-3">
+    <h2 class="text-2xl font-bold">6 · Roadmap <span class="badge badge-ghost badge-sm align-middle">provisional</span></h2>
+    <ul class="steps steps-vertical w-full">
+      <li class="step step-primary" data-content="0"><div class="text-left py-1 min0"><div class="font-semibold text-sm">Foundations</div><div class="text-xs opacity-70">Scaffold · Source Adapter interfaces · Postgres schema · eval harness + golden queries · ADRs.</div></div></li>
+      <li class="step step-primary" data-content="1"><div class="text-left py-1 min0"><div class="font-semibold text-sm">MVP slice</div><div class="text-xs opacity-70">Intent → pipeline (web-search + Serper) → one cited report with the §1 UX.</div></div></li>
+      <li class="step" data-content="2"><div class="text-left py-1 min0"><div class="font-semibold text-sm">Watch &amp; notify</div><div class="text-xs opacity-70">price_history · thresholds · Inngest cron · email.</div></div></li>
+      <li class="step" data-content="3"><div class="text-left py-1 min0"><div class="font-semibold text-sm">Trust &amp; chat</div><div class="text-xs opacity-70">Mature §2 detection · chat dock (pgvector) · YouTube/Reddit · evals.</div></div></li>
+      <li class="step" data-content="4"><div class="text-left py-1 min0"><div class="font-semibold text-sm">Toward product</div><div class="text-xs opacity-70">Multi-user · affiliate monetization · cost guards.</div></div></li>
+      <li class="step" data-content="5"><div class="text-left py-1 min0"><div class="font-semibold text-sm">Multi-platform</div><div class="text-xs opacity-70">Mobile push · extension.</div></div></li>
+    </ul>
+  </section>
+
+  <!-- ============ GRILL ============ -->
+  <section id="grill" class="sec space-y-5">
+    <div class="flex items-center gap-3 flex-wrap">
+      <h2 class="text-2xl font-bold">🔥 Grilling — one question at a time</h2>
+      <span class="badge badge-error">relentless mode</span>
+    </div>
+    <p class="lead opacity-70 text-sm">You asked me to grill us both until we genuinely agree. I'll go <strong>one question at a time, each with my recommended answer</strong>, walking the design tree from its root. Answer Q1 (queue it or just annotate/reply) and I'll follow up — and push back on weak answers, including my own.</p>
+
+    <div class="text-xs opacity-60">Progress through the tree: <span class="badge badge-success badge-xs">G1 ✓</span> <span class="badge badge-success badge-xs">G2 ✓</span> <span class="badge badge-success badge-xs">G3 ✓</span> <span class="badge badge-success badge-xs">G4 ✓</span> <span class="badge badge-success badge-xs">G5 ✓</span> <span class="badge badge-success badge-xs">G6 ✓</span> <span class="badge badge-success badge-xs">G7 ✓</span> <span class="badge badge-success">all resolved — shared understanding reached 🎉</span></div>
+
+    <!-- G1 RESOLVED -->
+    <div class="card card-border bg-base-100 border-success/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success">G1 · resolved</span><h3 class="card-title text-base">Generalist stays — but with calibrated confidence, not blind uniformity</h3></div>
+        <p class="text-sm opacity-85">You pushed back: generalist is the whole point, even personally — and you're right that <em>narrowing the product</em> would cripple your own non-electronics use, while the architecture is identical either way. <strong>I withdraw "narrow the scope."</strong> But your "what causes the dip?" question deserves a real answer, because the dip is real — just not in the code.</p>
+        <details class="collapse collapse-arrow bg-base-200 rounded-box" open>
+          <summary class="collapse-title text-sm font-semibold">Worked example: headphones vs. mattresses (why the dip is real)</summary>
+          <div class="collapse-content text-sm opacity-85 space-y-2">
+            <p>Same pipeline, two queries. The difference isn't the code — it's the <strong>category's source ecosystem + how dedup-able it is</strong>:</p>
+            <div class="overflow-x-auto"><table class="table table-xs"><thead><tr><th></th><th>"ANC headphones &lt;$300"</th><th>"mattress, side sleeper &lt;$1200"</th></tr></thead><tbody>
+              <tr><td>Independent ground truth</td><td class="text-success">RTINGS lab-measures ANC; r/headphones is expert</td><td class="text-error">"best mattress 2026" web is ~all affiliate-farm SEO; little real testing</td></tr>
+              <tr><td>Trust-engine signal</td><td class="text-success">calibrate sponsorship vs a known-independent baseline</td><td class="text-error">down-weight affiliate sources → little left; weak signal</td></tr>
+              <tr><td>Dedup / "cheapest"</td><td class="text-success">stable model # + GTIN across retailers → cheapest trustworthy</td><td class="text-error">retailer-exclusive variants, firmness/size combos, bundles → "cheapest" easily wrong</td></tr>
+            </tbody></table></div>
+            <p>So a generalist v1 doesn't crash on mattresses — it produces a <strong>confident-looking report built on spam with a shaky "cheapest,"</strong> and <em>you'd never know it was weaker than the headphone report.</em> That silent unevenness is the actual risk.</p>
+          </div>
+        </details>
+        <div class="alert alert-success alert-soft text-sm items-start"><span><strong>Shared resolution (better than either opening position):</strong> stay <strong>generalist at runtime</strong> (ask about anything), but (1) make the <strong>trust engine emit a per-report confidence signal</strong> and <em>say so</em> when a category is affiliate-contaminated or un-dedup-able ("limited independent sources — treat with caution") instead of faking confidence; and (2) build <strong>eval golden-sets depth-first, leading with categories where ground truth exists</strong>, so we know where Scout is strong vs weak. Adds a <code>confidence</code> field to the report model + the confidence chip now in the §1 mock.</span></div>
+      </div>
+    </div>
+
+    <!-- G2 RESOLVED -->
+    <div class="card card-border bg-base-100 border-success/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success">G2 · resolved</span><h3 class="card-title text-base">Aggressive matching + per-offer confidence tags — but the hero "✓ cheapest" badge stays high-bar</h3></div>
+        <p class="text-sm opacity-85">Agreed: lean <strong>aggressive</strong> (surface more cross-retailer matches) and <strong>tag lower-confidence ones</strong> with a "verify this" affordance. One refinement I'll hold: the prominent <span class="badge badge-success badge-xs">✓ cheapest</span> badge is the single most trust-bearing claim on the page, so <strong>gate that badge on high confidence</strong> while the broader offer list shows everything aggressively with tags. Rationale: people skim caveats on a headline number but actually read them on a list — so put the risk where it's read. Net: <strong>show more, label uncertainty, don't put the trust-badge on a guess.</strong></p>
+        <p class="text-xs opacity-60">Recorded: per-offer <code>match_confidence</code> + "verify" affordance on tagged offers; "✓ cheapest" badge gated on a confidence threshold.</p>
+      </div>
+    </div>
+
+    <!-- G3 RESOLVED -->
+    <div class="card card-border bg-base-100 border-success/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success">G3 · resolved</span><h3 class="card-title text-base">Transparency + source diversity is the moat; detection can be imperfect</h3></div>
+        <p class="text-sm opacity-85">Agreed. Lead with <strong>high-precision factual signals</strong> (disclosures, affiliate-link density, known-affiliate domains, brand-owned domains, review-burst timing); the LLM "feels sponsored" call is a soft secondary signal; <strong>show our evidence for every flag</strong>; surface dissent; measure with a labeled eval set. We never claim to catch all bias — the product is <em>honesty made visible</em>, which beats chat's single laundered voice even with imperfect detection. Recorded: a <code>credibility</code> + <code>flags[]</code> + <code>evidence</code> structure on every source, and a sponsorship-detection eval set in Phase 0.</p>
+      </div>
+    </div>
+
+    <!-- G4 RESOLVED -->
+    <div class="card card-border bg-base-100 border-success/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success">G4 · resolved</span><h3 class="card-title text-base">Considered-purchase positioning + streamed partials + component caching + depth toggle</h3></div>
+        <p class="text-sm opacity-85">Agreed. Stream partial results so the wait feels productive; watch re-checks run in the background; chat follow-ups are fast RAG (no re-research). Cache at the <strong>component layer</strong> (products / offers / fetched pages with TTLs) so the unique-query long tail still reuses the shared catalog. Default <strong>Quick (~30s)</strong>, offer <strong>Thorough</strong> on demand. Held risk: Quick must beat ~5 min of manual Googling or retention dies — that's the eval bar in G7.</p>
+      </div>
+    </div>
+
+    <!-- G5 DISCUSSION -->
+    <div class="card card-border bg-base-100 border-warning/50">
+      <div class="card-body p-5 lg:p-6 gap-3">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-warning">G5 · discussion</span><h3 class="card-title text-lg">Where AWS/CDK earns its keep — and what each option actually costs</h3></div>
+        <p class="text-sm opacity-85">You're right to keep most things third-party (Vercel, Supabase, Serper, OpenRouter/Anthropic) <em>and</em> to want a deliberate place to learn AWS/CDK. Here's my concrete opinion on the <strong>where</strong>, then the costs you asked for.</p>
+
+        <div class="alert alert-success alert-soft text-sm items-start"><span><strong>My opinion — put AWS exactly at the orchestration layer.</strong> The single best place to swap in AWS+CDK is the <strong>async pipeline + watch cron</strong>: <strong>Step Functions (the research state machine) + Lambda (per stage) + EventBridge Scheduler (watch cron)</strong>, provisioned with <strong>CDK in TypeScript</strong> (same language as the app — strong résumé signal). Why this seam and not others: (1) it's already behind a clean boundary (it only reads/writes Postgres and calls the Source Adapters), so swapping Inngest→Step Functions doesn't entangle Vercel or Supabase; (2) it's a <em>genuine</em> fit — a multi-step durable workflow + scheduled jobs is the textbook Step Functions use case; (3) it's a self-contained, portfolio-worthy infra project. Keep everything else third-party. Adjacent AWS bits you'd naturally learn next: S3 (report/offer cache artifacts), SQS (queues), CloudWatch (observability).</span></div>
+
+        <p class="text-sm opacity-85"><strong>The honest trade:</strong> Step Functions + Lambda + CDK is materially more work than Inngest (Inngest is ~zero-config durable steps inside your Next.js app; AWS is ASL state machines + Lambda packaging + IaC). You're buying <em>learning</em>, not speed. And a gotcha: <strong>Lambda bills for wall-clock while a step waits on the LLM</strong> — fine &amp; cheap at small scale, but for long Thorough steps use Step Functions async/callback patterns (or a Fargate task) rather than a Lambda that sits idle on the model.</p>
+
+        <div class="overflow-x-auto rounded-box border border-base-content/10">
+          <table class="table table-xs">
+            <thead><tr><th>Monthly cost</th><th>Personal<br/><span class="opacity-50">~100 reports</span></th><th>Small<br/><span class="opacity-50">~1,000 reports</span></th><th>Note</th></tr></thead>
+            <tbody>
+              <tr><td><strong>LLM</strong> (Opus synth + cheap bulk)</td><td>~$15–45</td><td>~$300–600</td><td>dominates; cut w/ caching + Gemini Flash-Lite bulk</td></tr>
+              <tr><td><strong>Web search</strong> (Claude/Exa)</td><td>~$5–15</td><td>~$70–150</td><td>Exa ~30% cheaper than Claude tool</td></tr>
+              <tr><td>Shopping SERP (Serper)</td><td>$0 <span class="opacity-50">(free 2.5k)</span></td><td>~$5–15</td><td>cheap</td></tr>
+              <tr><td>Hosting (Vercel)</td><td>$0 <span class="opacity-50">Hobby</span></td><td>$20 Pro</td><td></td></tr>
+              <tr><td>DB+auth (Supabase)</td><td>$0 <span class="opacity-50">free</span></td><td>$25 Pro</td><td></td></tr>
+              <tr><td>Email (Resend)</td><td>$0 <span class="opacity-50">free 3k</span></td><td>$20</td><td></td></tr>
+              <tr class="bg-base-200"><td><strong>Orchestration — Inngest</strong></td><td>$0 <span class="opacity-50">free</span></td><td>$0–50</td><td>best DX</td></tr>
+              <tr class="bg-base-200"><td><strong>Orchestration — AWS</strong> (Step Fns+Lambda+EventBridge)</td><td>~$0–2</td><td>~$1–8</td><td>Step Fns $25/1M transitions; Lambda near free-tier</td></tr>
+              <tr class="bg-base-200"><td><strong>Orchestration — self-host</strong> (Graphile Worker)</td><td>~$5–10 <span class="opacity-50">tiny VM</span></td><td>~$10–20</td><td>+ your ops time</td></tr>
+              <tr class="font-semibold"><td>All-in total</td><td><strong>~$25–70</strong></td><td><strong>~$450–800</strong></td><td>LLM+search ≈ 85–90%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs opacity-60">Rough estimates — verify at build time. <strong>The point:</strong> Inngest vs AWS vs self-host differ by single-digit dollars; the decision is DX-vs-learning, not cost. LLM + search is the only thing worth cost-optimizing (caching + cheap bulk tier).</p>
+
+        <div class="alert alert-info alert-soft text-sm items-start"><span><strong>G5 resolved:</strong> <strong>AWS Step Functions + Lambda + EventBridge + CDK from Phase 0</strong> for the orchestration layer (learning co-equal with shipping), with <strong>Inngest documented as the fallback</strong> if AWS friction or cost ever bites. Everything else stays third-party. Cost isn't the reason to hesitate on AWS — it's single-digit dollars; the only real cost is the Phase-0 learning-curve tax on velocity.</span></div>
+      </div>
+    </div>
+
+    <!-- ≈$0 PERSONAL CONFIG -->
+    <div class="card card-border bg-base-100 border-success/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success">＋ your question</span><h3 class="card-title text-base">Getting LLM + search to ≈ $0 for personal verification</h3></div>
+        <p class="text-sm opacity-85">Yes — personal usage can be genuinely ~$0/month. The levers:</p>
+        <ul class="text-sm opacity-85 space-y-1">
+          <li>🤖 <strong>LLM → $0:</strong> use <strong>Gemini's free tier</strong> (AI Studio: Flash / Flash-Lite, rate-limited) for the bulk tier, and/or run <strong>local models via Ollama</strong> (Llama/Qwen) for $0 marginal on everything. Add <strong>prompt caching</strong> (~90% off repeat context) and the <strong>Batch API (50% off)</strong> for non-urgent watch crawls.</li>
+          <li>🔎 <strong>Search → $0:</strong> live inside free tiers (Exa 1k/mo, Tavily 1k, Serper 2.5k) — personal volume (~100 reports × ~10 searches ≈ 1k) fits — or <strong>self-host SearXNG</strong> for $0 marginal.</li>
+          <li>🏷️ <strong>Shopping → $0:</strong> Serper free 2,500/mo covers personal easily.</li>
+          <li>☁️ <strong>Infra → ~$0:</strong> AWS free tier (Step Functions transitions + Lambda) + Supabase free + Vercel Hobby.</li>
+        </ul>
+        <div class="alert alert-warning alert-soft text-sm items-start"><span><strong>My honest pushback (you said I don't have to agree):</strong> don't validate <em>quality</em> on a free low-end model — you'd be testing the <em>plumbing</em>, not the <em>product</em>, and report quality is the entire point. So run a <strong>two-profile setup</strong> (a config flip, thanks to the provider abstraction): a <strong>"dev/free" profile</strong> (Gemini free tier or local Ollama + SearXNG) for building &amp; smoke-testing at $0, and a <strong>"quality" profile</strong> (Opus 4.8 synthesis + Claude/Exa search) you switch on for a handful of <em>real</em> reports when you actually judge whether Scout is good — that's a few cents each, not a subscription. Recorded a <code>PROVIDER_PROFILE</code> concept (dev-free / quality).</span></div>
+        <p class="text-xs opacity-60">Also: do the very first quality spike as a plain script/route (no durable orchestration) to confirm reports are good <em>before</em> investing in the Step Functions + CDK build — decouples "validate cheaply" from "learn AWS."</p>
+      </div>
+    </div>
+
+    <!-- G6 RESOLVED -->
+    <div class="card card-border bg-base-100 border-success/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success">G6 · resolved</span><h3 class="card-title text-base">No technical moat; defensibility = independence/trust + data + Google's ad blind spot (revisit seriously later)</h3></div>
+        <p class="text-sm opacity-85">Accepted for v1, flagged to revisit before any commercial push. The honest position: anyone can call the same APIs, so there's no tech moat — the defensible angles are <em>positioning</em> ones (Google structurally won't flag sponsored/affiliate results because that's its revenue; the Wirecutter/Consumer-Reports independent-trust play; accumulated watchlists/data + switching cost). For personal/portfolio it doesn't gate building.</p>
+      </div>
+    </div>
+
+    <!-- WHY NOT JUST GOOGLE APIS -->
+    <div class="card card-border bg-base-100 border-info/40">
+      <div class="card-body p-5 gap-2">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-info">＋ your question</span><h3 class="card-title text-base">"Why not just use Google's APIs?"</h3></div>
+        <p class="text-sm opacity-85"><strong>We actually do — heavily.</strong> Our price backbone <em>is</em> Google Shopping (Serper.dev returns Google Shopping results); Gemini is a candidate model in the cascade; and YouTube (Google-owned) is a review source. The catch is there's <strong>no single turnkey "Google API"</strong> that delivers Scout:</p>
+        <ul class="text-sm opacity-85 space-y-1">
+          <li>🛒 <strong>Shopping Content/Merchant API</strong> is for <em>merchants to upload their own products</em>, not for third parties to query the whole cross-retailer catalog — which is exactly why SERP providers (Serper/SerpApi) exist to read the public Shopping results.</li>
+          <li>🔎 <strong>Custom Search / Programmable Search</strong> is capped (100/day free, 10k/day) and site-restricted — not full open web research.</li>
+          <li>🤖 <strong>Gemini + Search grounding</strong> returns a <em>grounded answer</em>, not the structured per-source evidence + offer data Scout's trust layer needs — and it's a black box you can't audit or re-weight.</li>
+          <li>🛡️ <strong>No trust/bias layer, no price-watch/history API</strong> — those are exactly the parts Scout builds regardless.</li>
+        </ul>
+        <div class="alert alert-warning alert-soft text-sm items-start"><span><strong>The deliberate reason not to build entirely on Google:</strong> if Scout's whole value is <em>neutrality</em>, we want Google's raw <em>data</em> (Shopping offers) but not Google's <em>ranked/ad-influenced answer</em> as our output — handing Gemini's grounded answer straight to the user would import Google's incentives into Scout. We take Google as a commodity input behind our adapters, and do the independent multi-source synthesis + trust scoring ourselves. The adapter design also means we're never locked to it.</span></div>
+      </div>
+    </div>
+
+    <!-- G7 ACTIVE -->
+    <div class="card card-border bg-base-100 border-error/50">
+      <div class="card-body p-5 lg:p-6 gap-3">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-error">G7 · active (last)</span><h3 class="card-title text-lg">What does "v1 works" actually mean — the success / eval bar?</h3></div>
+        <p class="text-sm opacity-85">Everything above leaned on "we'll measure quality." This is where we make that concrete, <em>before</em> building, so we don't move goalposts. The core bet — repeated all session — is "a Scout report beats ~20–30 min of your own Googling." Let's define how we'll know.</p>
+        <div class="alert alert-success alert-soft text-sm items-start"><span><strong>My recommended v1 success bar:</strong>
+          <strong>(1) Quality vs. baseline</strong> — on a golden set of ~15–20 of <em>your own real</em> purchase questions across a few categories, you (blind-)rate the report <strong>≥ as good as 20–30 min of your own research in ≥75% of cases</strong>.
+          <strong>(2) Citation integrity</strong> — 100% of cited URLs resolve and support the claim (automated; zero fabrication).
+          <strong>(3) Price correctness</strong> — the "✓ cheapest" badge is never wrong on spot-checks (ties to G2).
+          <strong>(4) Trust signal works</strong> — on a labeled fixture set, ≥90% precision flagging explicit-disclosure sponsorship, and dissent surfaced when it exists (ties to G3).
+          <strong>(5) Latency</strong> — Quick path streams first content &lt; ~10s, completes &lt; ~45s.
+          <strong>(6) The real signal</strong> — <em>you actually reach for Scout</em> for your own purchases over a month instead of Googling.
+          The eval harness for (1)–(4) is built in <strong>Phase 0</strong>, not bolted on later.</span></div>
+        <div class="alert alert-success alert-soft text-sm items-start"><span><strong>G7 resolved:</strong> full bar accepted — golden-set quality vs your manual-research baseline (≥75%), 100% citation integrity, never-wrong "cheapest," ≥90% sponsorship-flag precision + dissent surfaced, Quick latency (first content &lt;~10s / done &lt;~45s), and "you actually use it." Eval harness lands in Phase 0.</span></div>
+      </div>
+    </div>
+
+    <!-- GRILLING COMPLETE -->
+    <div class="card bg-success/10 border border-success/40 rounded-box">
+      <div class="card-body p-5 lg:p-6 gap-3">
+        <div class="flex items-center gap-2 flex-wrap"><span class="badge badge-success badge-lg">🎉 Grilling complete</span><h3 class="card-title text-lg">Shared understanding — the 7 locked decisions</h3></div>
+        <div class="overflow-x-auto"><table class="table table-xs">
+          <tbody>
+            <tr><td class="font-semibold">G1 Scope</td><td>Generalist at runtime; calibrated <strong>confidence signal</strong> + eval-prioritized rollout (no narrowing the product).</td></tr>
+            <tr><td class="font-semibold">G2 Dedup/cheapest</td><td>Tiered matching (strong IDs → LLM match w/ <code>match_confidence</code>); aggressive + tagged, but the "✓ cheapest" badge gated on high confidence. Trustworthy-or-absent.</td></tr>
+            <tr><td class="font-semibold">G3 Trust</td><td>Transparency + source diversity is the moat; factual signals first, LLM soft-secondary, show evidence, eval set. Imperfect detection OK.</td></tr>
+            <tr><td class="font-semibold">G4 Cost/latency</td><td>Considered-purchase positioning; streamed partials; <strong>component-layer caching</strong>; Quick(default)/Thorough depth toggle.</td></tr>
+            <tr><td class="font-semibold">G5 Vendors</td><td>Mostly third-party; <strong>AWS Step Functions + Lambda + EventBridge + CDK from Phase 0</strong> for orchestration (Inngest fallback). ≈$0 personal via dev-free vs quality <code>PROVIDER_PROFILE</code>.</td></tr>
+            <tr><td class="font-semibold">G6 Moat</td><td>No tech moat; defensibility = independence/trust-brand + data + Google's ad blind spot. Doesn't gate v1; revisit before commercial. Use Google as a commodity input, not the answer.</td></tr>
+            <tr><td class="font-semibold">G7 Success</td><td>Concrete v1 bar (quality vs manual baseline + citation/price/trust/latency + real usage); eval harness in Phase 0.</td></tr>
+          </tbody>
+        </table></div>
+        <div class="alert alert-info alert-soft text-sm items-start"><span><strong>Next:</strong> I'm folding all of this into the final plan file (<code>~/.claude/plans/…scout…md</code>). From here you can (a) start <strong>Phase 0</strong> — scaffold + Source Adapter interfaces + Postgres schema + eval harness, (b) do the cheap <strong>quality spike</strong> first (plain script, dev-free profile) to confirm reports are good before building, or (c) keep refining. Tell me which.</span></div>
+      </div>
+    </div>
+
+    <form class="card card-border bg-base-100" data-lavish-question="grill-open"
+      onsubmit="event.preventDefault(); const t=event.currentTarget.elements.fb.value.trim(); if(t&&window.lavish){ window.lavish.queuePrompt('Grill note: '+t, {tag:'feedback', text:t, element:event.currentTarget}); event.currentTarget.reset(); }">
+      <div class="card-body p-5 gap-3">
+        <h3 class="card-title text-base">…or jump the queue / add a concern of your own</h3>
+        <textarea name="fb" class="textarea textarea-bordered w-full" rows="2" placeholder="e.g. 'start with G4, I'm worried about cost', 'I disagree with the narrow recommendation because…', 'add a question about X'"></textarea>
+        <button type="submit" class="btn btn-outline btn-sm self-start">Queue note</button>
+      </div>
+    </form>
+  </section>
+
+  <footer class="footer footer-center text-xs opacity-50 border-t border-base-content/10 pt-6 pb-10">
+    <p>Design source (3): Lavish-recommended Tailwind v4 + DaisyUI v5 (luxury). Pricing grounded via web research + Claude API reference, June 2026 — verify quotas at build time.</p>
+  </footer>
+
+</main>
+</body>
+</html>
