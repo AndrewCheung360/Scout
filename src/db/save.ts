@@ -6,12 +6,8 @@
  * Postgres — provision a DB, apply the migration, then verify (and refine) here.
  */
 import { getPool } from './client.js';
+import { parsePrice } from '../adapters/offers.js';
 import type { ResearchResult } from '../research/types.js';
-
-function parsePrice(p: string): number | null {
-  const m = p.replace(/[, ]/g, '').match(/[\d.]+/);
-  return m ? parseFloat(m[0]) : null;
-}
 
 export async function maybeSaveReport(result: ResearchResult): Promise<string | null> {
   const pool = getPool();
