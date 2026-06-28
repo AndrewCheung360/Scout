@@ -64,6 +64,8 @@ export type AlertIntent = {
 export type RecheckResult = {
   observation: OfferObservation;
   intent: AlertIntent | null;
+  /** True when the offer match was ambiguous/low-confidence — gates the deep re-research branch. */
+  needsDeepResearch: boolean;
 };
 
 /**
@@ -84,8 +86,14 @@ export async function recheckWatch(target: WatchTarget, ports: RecheckPorts): Pr
   const retailer = current?.retailer ?? 'unknown';
   // Serper shopping doesn't reliably return stock; treat a priced, matched offer as in stock.
   const inStock = current != null && price != null;
+  // A low-confidence/ambiguous match is what the optional deep LLM re-research step is for (ADR-0003).
+  const needsDeepResearch = agg.matchConfidence === 'low';
 
-  // 2. Append the observation to the price_history time series (feeds future baselines + sparkline).
+  // 2. Read the comparison baseline from PRIOR history — before appending the current observation,
+  //    so baselinePrice/wasInStock reflect past checks, not the value we're about to write.
+  const baseline = await ports.getBaseline(watch.productId);
+
+  // 3. Append the current observation to the price_history time series (future baselines + sparkline).
   await ports.appendObservation({
     productId: watch.productId,
     retailer,
@@ -94,8 +102,7 @@ export async function recheckWatch(target: WatchTarget, ports: RecheckPorts): Pr
     inStock,
   });
 
-  // 3. Build the observation against the historical baseline.
-  const baseline = await ports.getBaseline(watch.productId);
+  // 4. Build the observation against the historical baseline.
   const observation: OfferObservation = {
     price,
     inStock,
@@ -104,7 +111,7 @@ export async function recheckWatch(target: WatchTarget, ports: RecheckPorts): Pr
     wasInStock: baseline.wasInStock,
   };
 
-  // 4. Evaluate the watch's rules (pure) and, if any fire, emit an alert intent.
+  // 5. Evaluate the watch's rules (pure) and, if any fire, emit an alert intent.
   const reasons = watch.active ? evaluateRules(watch.rules, observation) : [];
   const intent: AlertIntent | null = reasons.length
     ? {
@@ -118,7 +125,7 @@ export async function recheckWatch(target: WatchTarget, ports: RecheckPorts): Pr
       }
     : null;
 
-  return { observation, intent };
+  return { observation, intent, needsDeepResearch };
 }
 
 /** Re-check many watches, collecting the alert intents that fired. Used by the Step Functions Map step. */

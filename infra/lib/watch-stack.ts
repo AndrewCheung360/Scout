@@ -70,7 +70,8 @@ export class ScoutWatchStack extends Stack {
         handler,
         timeout: Duration.seconds(30),
         memorySize: 256,
-        // Handlers resolve secret values from Secrets Manager at runtime via these ARNs.
+        // Handlers resolve secret values from Secrets Manager at runtime via these ARNs
+        // (see lambda/secrets.mjs) — only ARNs land in the env, never the secret values.
         environment: {
           DATABASE_URL_SECRET_ARN: dbSecret.secretArn,
           ...opts.environment,
@@ -148,8 +149,15 @@ export class ScoutWatchStack extends Stack {
       .otherwise(noAlert);
 
     // Deep re-research only when the recheck flagged an ambiguous/low-confidence match.
+    // Guard the boolean check with isPresent so a missing path can't raise States.Runtime.
     const deepChoice = new sfn.Choice(this, 'NeedsDeepResearch?')
-      .when(sfn.Condition.booleanEquals('$.recheck.needsDeepResearch', true), deepResearch.next(alertChoice))
+      .when(
+        sfn.Condition.and(
+          sfn.Condition.isPresent('$.recheck.needsDeepResearch'),
+          sfn.Condition.booleanEquals('$.recheck.needsDeepResearch', true),
+        ),
+        deepResearch.next(alertChoice),
+      )
       .otherwise(skipDeep.next(alertChoice));
 
     // Per-watch body: recheck → deepChoice → alertChoice.

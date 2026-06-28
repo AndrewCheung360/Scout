@@ -10,17 +10,25 @@
 import pg from 'pg';
 import { recheckWatch } from './shared/watch/recheck.js';
 import { SerperOffersAdapter } from './shared/adapters/offers.js';
+import { resolveSecret } from './secrets.mjs';
 
 const { Pool } = pg;
 let pool;
-const getPool = () => (pool ??= new Pool({ connectionString: process.env.DATABASE_URL }));
+async function getPool() {
+  if (!pool) {
+    const connectionString = await resolveSecret(process.env.DATABASE_URL_SECRET_ARN);
+    pool = new Pool({ connectionString });
+  }
+  return pool;
+}
 
 export const handler = async (event) => {
   const target = event; // one WatchTarget from the Map state
-  const db = getPool();
+  const db = await getPool();
+  const serperApiKey = await resolveSecret(process.env.SERPER_API_KEY_SECRET_ARN);
 
   const ports = {
-    offers: new SerperOffersAdapter(process.env.SERPER_API_KEY),
+    offers: new SerperOffersAdapter(serperApiKey),
     async getBaseline(productId) {
       // Baseline = the lowest price observed in history; prior stock = the most-recent observation.
       const { rows } = await db.query(
@@ -40,7 +48,7 @@ export const handler = async (event) => {
     },
   };
 
-  const { intent } = await recheckWatch(target, ports);
-  // Forward the intent (or null) to the next Choice state.
-  return { intent };
+  const { intent, needsDeepResearch } = await recheckWatch(target, ports);
+  // Forward the intent (or null) + the deep-research flag to the next Choice states.
+  return { intent, needsDeepResearch };
 };

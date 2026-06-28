@@ -30,9 +30,10 @@ export type ProductIdentity = {
 
 /**
  * Resolve a product to a single catalog row: reuse an existing row when identity matches,
- * otherwise insert one. Identity match prefers any overlapping strong identifier; when none
- * are present it falls back to a case-insensitive canonical-name match. This is what stops the
- * old behavior of inserting a fresh `products` row on every run (issue #3).
+ * otherwise insert one. Identity match prefers any overlapping strong identifier, then falls
+ * back to a case-insensitive canonical-name match — so a name-only row is still reused when it
+ * is later re-saved with an identifier. This is what stops the old behavior of inserting a fresh
+ * `products` row on every run (issue #3).
  */
 export async function upsertProduct(client: Queryable, identity: ProductIdentity): Promise<string> {
   const ids = identity.identifiers ?? {};
@@ -48,13 +49,16 @@ export async function upsertProduct(client: Queryable, identity: ProductIdentity
       );
       if (found.rows[0]) return found.rows[0].id;
     }
-  } else {
-    const found = await client.query<{ id: string }>(
-      `select id from products where lower(canonical_name) = lower($1) limit 1`,
-      [identity.canonicalName],
-    );
-    if (found.rows[0]) return found.rows[0].id;
   }
+
+  // Canonical-name fallback — runs whether or not identifiers were supplied. This also reuses a
+  // row first persisted name-only (identifiers '{}') when it is later re-saved with a strong
+  // identifier, instead of inserting a duplicate (issue #3 dedup).
+  const byName = await client.query<{ id: string }>(
+    `select id from products where lower(canonical_name) = lower($1) limit 1`,
+    [identity.canonicalName],
+  );
+  if (byName.rows[0]) return byName.rows[0].id;
 
   const inserted = await client.query<{ id: string }>(
     `insert into products (canonical_name, brand, identifiers)

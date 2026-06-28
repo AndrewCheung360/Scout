@@ -7,17 +7,22 @@
  * Thin handler — see ./README.md. `pg` + the DB URL secret are wired at deploy time.
  */
 import pg from 'pg';
+import { resolveSecret } from './secrets.mjs';
 
 const { Pool } = pg;
 let pool;
 
-function getPool() {
-  if (!pool) pool = new Pool({ connectionString: process.env.DATABASE_URL });
+async function getPool() {
+  if (!pool) {
+    const connectionString = await resolveSecret(process.env.DATABASE_URL_SECRET_ARN);
+    pool = new Pool({ connectionString });
+  }
   return pool;
 }
 
 export const handler = async () => {
-  const { rows } = await getPool().query(
+  const db = await getPool();
+  const { rows } = await db.query(
     `select w.id, w.user_id, w.product_id, w.rules, w.channel, w.active, p.canonical_name
        from watches w
        join products p on p.id = w.product_id

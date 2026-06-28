@@ -37,6 +37,33 @@ function ports(offers: ShoppingOffer[], baseline: Baseline): RecheckPorts & { ap
   };
 }
 
+/**
+ * Ports whose baseline is DERIVED from the appended history — mirroring the real Lambda's
+ * getBaseline (min(price) over price_history, most-recent in_stock). This is what catches the
+ * read-after-write bug: if recheckWatch appends before reading the baseline, the baseline would
+ * be polluted by the current observation.
+ */
+function historyPorts(
+  offers: ShoppingOffer[],
+  seed: PriceObservation[] = [],
+): RecheckPorts & { appended: PriceObservation[] } {
+  const appended: PriceObservation[] = [...seed];
+  return {
+    appended,
+    offers: new FakeOffers(offers),
+    async getBaseline() {
+      const prices = appended.map((o) => o.price).filter((p): p is number => p != null);
+      return {
+        baselinePrice: prices.length ? Math.min(...prices) : null,
+        wasInStock: appended.length ? appended[appended.length - 1]!.inStock : false,
+      };
+    },
+    async appendObservation(obs) {
+      appended.push(obs);
+    },
+  };
+}
+
 const watch = (rules: Watch['rules']): Watch => ({
   id: 'w1',
   userId: 'u1',
@@ -110,6 +137,44 @@ test('recheckAll collects only the watches that fired', async () => {
   const intents = await recheckAll([target(fires), target(quiet)], p);
   assert.equal(intents.length, 1);
   assert.equal(intents[0]!.watchId, 'w1');
+});
+
+test('baseline reflects PRIOR history, not the just-appended current observation', async () => {
+  const offers = [offer('Amazon', 320), offer('Best Buy', 300), offer('Walmart', 310)];
+  // prior history: a single observation at 400, in stock
+  const p = historyPorts(offers, [{ productId: 'p1', retailer: 'Amazon', price: 400, currency: 'USD', inStock: true }]);
+
+  const { observation, intent } = await recheckWatch(target(watch([{ type: 'price_drop_pct', pct: 20 }])), p);
+
+  assert.equal(observation.baselinePrice, 400, 'baseline excludes the current (cheaper) observation');
+  assert.ok(intent, 'a 25% drop from the prior baseline fires (would not if baseline were polluted)');
+  assert.equal(p.appended.length, 2, 'the current observation was still appended');
+});
+
+test('back_in_stock fires against the prior (out-of-stock) history, not the just-appended row', async () => {
+  const offers = [offer('Amazon', 320), offer('Best Buy', 300), offer('Walmart', 310)]; // priced → in stock now
+  // prior history: last observation was out of stock
+  const p = historyPorts(offers, [{ productId: 'p1', retailer: 'Amazon', price: null, currency: 'USD', inStock: false }]);
+
+  const { intent } = await recheckWatch(target(watch([{ type: 'back_in_stock' }])), p);
+  assert.ok(intent, 'back-in-stock fires when prior was out of stock');
+  assert.equal(intent!.reasons[0]!.type, 'back_in_stock');
+});
+
+test('recheck flags low-confidence matches for deep re-research', async () => {
+  const offers = [offer('SomeShop', 300)]; // a single untrusted offer → low match confidence
+  const p = ports(offers, { baselinePrice: 400, wasInStock: true });
+
+  const { needsDeepResearch } = await recheckWatch(target(watch([])), p);
+  assert.equal(needsDeepResearch, true);
+});
+
+test('recheck does not flag a confident trusted match', async () => {
+  const offers = [offer('Amazon', 320), offer('Best Buy', 300), offer('Walmart', 310)];
+  const p = ports(offers, { baselinePrice: 400, wasInStock: true });
+
+  const { needsDeepResearch } = await recheckWatch(target(watch([])), p);
+  assert.equal(needsDeepResearch, false);
 });
 
 test('renderAlertEmail turns a fired intent into a deliverable message', async () => {

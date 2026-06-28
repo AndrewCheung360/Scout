@@ -3,28 +3,37 @@
  *
  * Renders the alert intent (tested `renderAlertEmail`) and sends it via the Resend adapter,
  * then records the alert in the `alerts` table (deduped by the caller / state machine). The
- * RESEND_API_KEY is read from the environment by the adapter — never embedded in the template.
+ * Resend API key is resolved from Secrets Manager at runtime (RESEND_API_KEY_SECRET_ARN) and
+ * passed into the adapter — never embedded in the template.
  */
 import pg from 'pg';
 import { renderAlertEmail } from './shared/watch/alert-email.js';
 import { ResendNotifyAdapter } from './shared/adapters/notify.js';
+import { resolveSecret } from './secrets.mjs';
 
 const { Pool } = pg;
 let pool;
-const getPool = () => (pool ??= new Pool({ connectionString: process.env.DATABASE_URL }));
+async function getPool() {
+  if (!pool) {
+    const connectionString = await resolveSecret(process.env.DATABASE_URL_SECRET_ARN);
+    pool = new Pool({ connectionString });
+  }
+  return pool;
+}
 
 export const handler = async (event) => {
   const { intent } = event;
   if (!intent) return { delivered: false };
 
-  const db = getPool();
+  const db = await getPool();
 
   // Resolve the recipient from the user that owns the watch.
   const { rows } = await db.query(`select email from users where id = $1`, [intent.userId]);
   const to = rows[0]?.email;
   if (!to) return { delivered: false, reason: 'no recipient email' };
 
-  const notifier = new ResendNotifyAdapter();
+  const resendApiKey = await resolveSecret(process.env.RESEND_API_KEY_SECRET_ARN);
+  const notifier = new ResendNotifyAdapter(resendApiKey);
   const message = renderAlertEmail(intent, to);
   const result = await notifier.send(message);
 
