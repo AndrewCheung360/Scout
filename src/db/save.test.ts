@@ -162,3 +162,13 @@ test('upsertProduct backfills identifiers onto a name-matched row so later cross
   assert.equal(first, third, 'backfilled identifier lets a differently-named save dedup to the same row');
   assert.equal(c.productRowCount(), 1, 'no duplicate product row');
 });
+
+test('upsertProduct reuses a name-only row when later re-saved with an identifier', async () => {
+  const c = new FakeClient();
+  // first persisted name-only (identifiers '{}') ...
+  const first = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5' });
+  // ... then re-saved once a strong identifier is known: must reuse the existing row, not insert a dup
+  const second = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5', identifiers: { asin: 'B09XS7JWHH' } });
+  assert.equal(first, second, 'name-only row reused when an identifier appears later');
+  assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
+});
