@@ -30,10 +30,19 @@ function getClientIp(req: Request): string {
   return 'unknown';
 }
 
+function evictExpiredBuckets(now: number): void {
+  for (const [key, bucket] of rateLimitStore) {
+    if (now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+      rateLimitStore.delete(key);
+    }
+  }
+}
+
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
+  evictExpiredBuckets(now);
   const bucket = rateLimitStore.get(ip);
-  if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+  if (!bucket) {
     rateLimitStore.set(ip, { count: 1, windowStart: now });
     return false;
   }
@@ -62,17 +71,17 @@ function checkAuth(req: Request): boolean {
  * {type:"report",result} (or {type:"error",message}). The client renders progress live (G4).
  */
 export async function POST(req: Request) {
-  if (!checkAuth(req)) {
-    return new Response(JSON.stringify({ type: 'error', message: 'unauthorized' }) + '\n', {
-      status: 401,
-      headers: { 'content-type': 'application/json' },
-    });
-  }
-
   const ip = getClientIp(req);
   if (isRateLimited(ip)) {
     return new Response(JSON.stringify({ type: 'error', message: 'rate limit exceeded' }) + '\n', {
       status: 429,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  if (!checkAuth(req)) {
+    return new Response(JSON.stringify({ type: 'error', message: 'unauthorized' }) + '\n', {
+      status: 401,
       headers: { 'content-type': 'application/json' },
     });
   }
