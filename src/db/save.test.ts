@@ -21,16 +21,17 @@ class FakeClient implements Queryable {
     return this.calls.filter((c) => c.sql.includes(`insert into ${table}`));
   }
 
+  /** Distinct product rows that actually exist — unlike rowsFor('products'), this reflects the
+   *  unique-index-backed on-conflict upsert, where a repeat call resolves to the same row instead
+   *  of inserting a new one (db/migrations/0003). */
+  productRowCount(): number {
+    return this.productsById.size;
+  }
+
   async query<T = unknown>(sql: string, params: unknown[] = []): Promise<{ rows: T[] }> {
     this.calls.push({ sql, params });
     const s = sql.trim();
 
-    // product identity lookup by canonical name (the fallback path the dossier uses)
-    if (s.startsWith('select id from products where lower(canonical_name)')) {
-      const name = String(params[0]).toLowerCase();
-      const id = this.productsByName.get(name);
-      return { rows: (id ? [{ id }] : []) as T[] };
-    }
     // product identity lookup by strong identifier (jsonb containment)
     if (s.startsWith('select id from products where identifiers @>')) {
       const probe = JSON.parse(String(params[0])) as Record<string, unknown>;
@@ -40,10 +41,15 @@ class FakeClient implements Queryable {
       }
       return { rows: [] as T[] };
     }
+    // atomic name upsert, simulating the unique index on lower(canonical_name) (db/migrations/0003):
+    // a repeat call for the same name (any casing) resolves to the existing row instead of inserting.
     if (s.startsWith('insert into products')) {
-      const id = `prod-${++this.seq}`;
       const [canonicalName, , identifiersJson] = params as [string, unknown, string];
-      this.productsByName.set(canonicalName.toLowerCase(), id);
+      const key = canonicalName.toLowerCase();
+      const existing = this.productsByName.get(key);
+      if (existing) return { rows: [{ id: existing }] as T[] };
+      const id = `prod-${++this.seq}`;
+      this.productsByName.set(key, id);
       this.productsById.set(id, { identifiers: JSON.parse(identifiersJson ?? '{}') });
       return { rows: [{ id }] as T[] };
     }
@@ -120,8 +126,7 @@ test('save dedups products by canonical name across runs (issue #3)', async () =
   await saveReport(c, fixture('Acme Widget 100'));
   await saveReport(c, fixture('acme widget 100')); // same product, different casing, second run
 
-  const productInserts = c.rowsFor('products');
-  assert.equal(productInserts.length, 1, 'only one products row despite two runs (was 2 before the fix)');
+  assert.equal(c.productRowCount(), 1, 'only one products row despite two runs (was 2 before the fix)');
 
   // both runs still record offers + one trustworthy history observation each against the single product id
   assert.equal(c.rowsFor('price_history').length, 2, 'one trustworthy observation per run accumulates across runs');
@@ -133,7 +138,7 @@ test('upsertProduct reuses an existing row when a strong identifier matches', as
   // a later run with a different name but the same ASIN must resolve to the same product
   const second = await upsertProduct(c, { canonicalName: 'Sony WH1000XM5 Headphones', identifiers: { asin: 'B09XS7JWHH' } });
   assert.equal(first, second, 'same ASIN → same product id');
-  assert.equal(c.rowsFor('products').length, 1);
+  assert.equal(c.productRowCount(), 1);
 });
 
 test('upsertProduct reuses a name-only row when later re-saved with an identifier', async () => {
@@ -143,7 +148,7 @@ test('upsertProduct reuses a name-only row when later re-saved with an identifie
   // ... then re-saved once a strong identifier is known: must reuse the existing row, not insert a dup
   const second = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5', identifiers: { asin: 'B09XS7JWHH' } });
   assert.equal(first, second, 'name-only row reused when an identifier appears later');
-  assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
+  assert.equal(c.productRowCount(), 1, 'no duplicate product row');
 });
 
 test('upsertProduct backfills identifiers onto a name-matched row so later cross-name dedup matches', async () => {
@@ -154,5 +159,5 @@ test('upsertProduct backfills identifiers onto a name-matched row so later cross
   // a third run under a DIFFERENT name but the same ASIN must now resolve to the original row
   const third = await upsertProduct(c, { canonicalName: 'Sony Noise-Cancelling Headphones', identifiers: { asin: 'B09XS7JWHH' } });
   assert.equal(first, third, 'backfilled identifier lets a differently-named save dedup to the same row');
-  assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
+  assert.equal(c.productRowCount(), 1, 'no duplicate product row');
 });

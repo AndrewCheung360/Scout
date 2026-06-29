@@ -53,29 +53,29 @@ export async function upsertProduct(client: Queryable, identity: ProductIdentity
 
   // Canonical-name fallback — runs whether or not identifiers were supplied. This also reuses a
   // row first persisted name-only (identifiers '{}') when it is later re-saved with a strong
-  // identifier, instead of inserting a duplicate (issue #3 dedup).
-  const byName = await client.query<{ id: string }>(
-    `select id from products where lower(canonical_name) = lower($1) limit 1`,
-    [identity.canonicalName],
-  );
-  if (byName.rows[0]) {
-    // Backfill: this run carries strong identifiers the existing (likely name-only) row lacks.
-    // Merge them into the jsonb so future identifier-based dedup matches across names.
-    if (idEntries.length) {
-      await client.query(
-        `update products set identifiers = coalesce(identifiers, '{}'::jsonb) || $2::jsonb where id = $1`,
-        [byName.rows[0].id, JSON.stringify(Object.fromEntries(idEntries))],
-      );
-    }
-    return byName.rows[0].id;
-  }
-
-  const inserted = await client.query<{ id: string }>(
+  // identifier, instead of inserting a duplicate (issue #3 dedup). The insert is an atomic
+  // upsert against a unique index on lower(canonical_name) (db/migrations/0003) so two concurrent
+  // saves for a brand-new product can't both miss the select-then-insert lookup above and race in
+  // a duplicate row — `on conflict ... returning id` always resolves to a single row either way.
+  // The identifiers jsonb path above has no equivalent constraint, so it is still check-then-insert.
+  const upserted = await client.query<{ id: string }>(
     `insert into products (canonical_name, brand, identifiers)
-     values ($1, $2, $3::jsonb) returning id`,
+     values ($1, $2, $3::jsonb)
+     on conflict (lower(canonical_name)) do update set canonical_name = excluded.canonical_name
+     returning id`,
     [identity.canonicalName, identity.brand ?? null, JSON.stringify(ids)],
   );
-  return inserted.rows[0]!.id;
+  const productId = upserted.rows[0]!.id;
+
+  // Backfill: this run carries strong identifiers an existing (likely name-only) row lacks.
+  // Merge them into the jsonb so future identifier-based dedup matches across names.
+  if (idEntries.length) {
+    await client.query(
+      `update products set identifiers = coalesce(identifiers, '{}'::jsonb) || $2::jsonb where id = $1`,
+      [productId, JSON.stringify(Object.fromEntries(idEntries))],
+    );
+  }
+  return productId;
 }
 
 /** Append one observed offer to the append-only price_history time series (issue #3). */

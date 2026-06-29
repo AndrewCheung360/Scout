@@ -37,7 +37,9 @@ export const handler = async (event) => {
   // condition persists (e.g. price_below at/under target) would otherwise re-email every run, but a
   // secondary reason that newly fires (e.g. back_in_stock) while the primary is still in cooldown
   // must still be delivered. So we suppress only the reason types already delivered within the
-  // window and keep the rest. Reason is a jsonb array; @> matches an element of that type.
+  // window and keep the rest. Reason is a jsonb array of full AlertReason objects, so matching a
+  // type requires checking the array elements' `type` key rather than array containment (`@>`
+  // only matches whole elements, which would never equal the richer stored objects).
   const reasons = intent.reasons ?? [];
   const deliverable = [];
   for (const reason of reasons) {
@@ -47,9 +49,11 @@ export const handler = async (event) => {
         where watch_id = $1
           and delivered_at is not null
           and delivered_at > now() - ($2 || ' hours')::interval
-          and reason @> $3::jsonb
+          and exists (
+            select 1 from jsonb_array_elements(reason) e where e->>'type' = $3
+          )
         limit 1`,
-      [intent.watchId, String(COOLDOWN_HOURS), JSON.stringify([{ type: reason.type }])],
+      [intent.watchId, String(COOLDOWN_HOURS), reason.type],
     );
     if (!recent.length) deliverable.push(reason);
   }
