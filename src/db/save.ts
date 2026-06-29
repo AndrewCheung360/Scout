@@ -58,18 +58,21 @@ export async function upsertProduct(client: Queryable, identity: ProductIdentity
   // saves for a brand-new product can't both miss the select-then-insert lookup above and race in
   // a duplicate row — `on conflict ... returning id` always resolves to a single row either way.
   // The identifiers jsonb path above has no equivalent constraint, so it is still check-then-insert.
-  const upserted = await client.query<{ id: string }>(
+  // The conflict branch is a self-assignment (not `excluded.canonical_name`) so a later save never
+  // overwrites the first-seen casing of an existing row's name.
+  const upserted = await client.query<{ id: string; inserted: boolean }>(
     `insert into products (canonical_name, brand, identifiers)
      values ($1, $2, $3::jsonb)
-     on conflict (lower(canonical_name)) do update set canonical_name = excluded.canonical_name
-     returning id`,
+     on conflict (lower(canonical_name)) do update set canonical_name = products.canonical_name
+     returning id, (xmax = 0) as inserted`,
     [identity.canonicalName, identity.brand ?? null, JSON.stringify(ids)],
   );
-  const productId = upserted.rows[0]!.id;
+  const { id: productId, inserted } = upserted.rows[0]!;
 
   // Backfill: this run carries strong identifiers an existing (likely name-only) row lacks.
-  // Merge them into the jsonb so future identifier-based dedup matches across names.
-  if (idEntries.length) {
+  // Merge them into the jsonb so future identifier-based dedup matches across names. Skipped on a
+  // fresh insert, where the row's identifiers already equal `ids` from the insert itself.
+  if (idEntries.length && !inserted) {
     await client.query(
       `update products set identifiers = coalesce(identifiers, '{}'::jsonb) || $2::jsonb where id = $1`,
       [productId, JSON.stringify(Object.fromEntries(idEntries))],

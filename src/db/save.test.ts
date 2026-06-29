@@ -42,16 +42,17 @@ class FakeClient implements Queryable {
       return { rows: [] as T[] };
     }
     // atomic name upsert, simulating the unique index on lower(canonical_name) (db/migrations/0003):
-    // a repeat call for the same name (any casing) resolves to the existing row instead of inserting.
+    // a repeat call for the same name (any casing) resolves to the existing row instead of inserting,
+    // and never overwrites the first-seen casing (mirrors `do update set canonical_name = products.canonical_name`).
     if (s.startsWith('insert into products')) {
       const [canonicalName, , identifiersJson] = params as [string, unknown, string];
       const key = canonicalName.toLowerCase();
       const existing = this.productsByName.get(key);
-      if (existing) return { rows: [{ id: existing }] as T[] };
+      if (existing) return { rows: [{ id: existing, inserted: false }] as T[] };
       const id = `prod-${++this.seq}`;
       this.productsByName.set(key, id);
       this.productsById.set(id, { identifiers: JSON.parse(identifiersJson ?? '{}') });
-      return { rows: [{ id }] as T[] };
+      return { rows: [{ id, inserted: true }] as T[] };
     }
     // identifier backfill: merge the new identifiers into the existing row's jsonb (|| semantics)
     if (s.startsWith('update products set identifiers')) {
