@@ -62,6 +62,14 @@ class FakeClient implements Queryable {
       this.productsById.set(id, { identifiers: merged });
       return { rows: [] as T[] };
     }
+    // identifier backfill: merge the new identifiers into the existing row's jsonb (|| semantics)
+    if (s.startsWith('update products set identifiers')) {
+      const [id, mergeJson] = params as [string, string];
+      const row = this.productsById.get(id) ?? { identifiers: {} };
+      const merged = { ...((row.identifiers as Record<string, unknown>) ?? {}), ...JSON.parse(mergeJson) };
+      this.productsById.set(id, { identifiers: merged });
+      return { rows: [] as T[] };
+    }
     if (s.startsWith('insert into reports')) {
       return { rows: [{ id: `report-${++this.seq}` }] as T[] };
     }
@@ -170,5 +178,16 @@ test('upsertProduct reuses a name-only row when later re-saved with an identifie
   // ... then re-saved once a strong identifier is known: must reuse the existing row, not insert a dup
   const second = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5', identifiers: { asin: 'B09XS7JWHH' } });
   assert.equal(first, second, 'name-only row reused when an identifier appears later');
+  assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
+});
+
+test('upsertProduct backfills identifiers onto a name-matched row so later cross-name dedup matches', async () => {
+  const c = new FakeClient();
+  // first persisted name-only, then re-saved under the same name carrying a strong identifier
+  const first = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5' });
+  await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5', identifiers: { asin: 'B09XS7JWHH' } });
+  // a third run under a DIFFERENT name but the same ASIN must now resolve to the original row
+  const third = await upsertProduct(c, { canonicalName: 'Sony Noise-Cancelling Headphones', identifiers: { asin: 'B09XS7JWHH' } });
+  assert.equal(first, third, 'backfilled identifier lets a differently-named save dedup to the same row');
   assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
 });
