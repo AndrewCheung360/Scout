@@ -13,7 +13,8 @@ System-wide decisions live in `docs/adr/`; context-scoped decisions, when they a
 
 Cross-cutting infrastructure (not a domain context):
 
-- `src/adapters/` — the **Source Adapter** seam (`SearchAdapter`, `OffersAdapter`, `ReviewAdapter`) that isolates external, ToS-sensitive, cost-bearing vendors behind interfaces.
+- `src/adapters/` — the **Source Adapter** seam (`SearchAdapter`, `OffersAdapter`, `ReviewAdapter`, `NotifyAdapter`) that isolates external, ToS-sensitive, cost-bearing vendors behind interfaces.
 - `src/llm/` — model/provider selection via the `PROVIDER_PROFILE` switch.
+- `infra/` — the AWS CDK app that provisions the `watch` context's re-check/alert orchestration (EventBridge → Step Functions → Lambda). Code-first; not deployed. See `AGENTS.md`.
 
 See the foundational plan (`~/.claude/plans/please-help-me-research-staged-cat.md`) for the full design and the G1–G7 decisions this structure implements.
