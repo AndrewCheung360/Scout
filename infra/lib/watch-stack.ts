@@ -152,6 +152,44 @@ export class ScoutWatchStack extends Stack {
     const noAlert = new sfn.Pass(this, 'NoAlert');
     const skipDeep = new sfn.Pass(this, 'SkipDeepResearch');
 
+    // --- Per-watch error isolation -----------------------------------------------------------
+    // The Map below runs each watch independently; without this, a single watch throwing (a
+    // transient Serper/DB blip, a Lambda throttle, or a deep-research task timeout) would
+    // bubble up and fail the ENTIRE scheduled execution — dropping alerts for every other
+    // watch until the next 6-hourly tick. So we (a) retry the short Lambda steps on transient
+    // faults, then (b) catch anything still failing and route that one iteration to a Pass so
+    // the Map completes the remaining watches.
+
+    // Transient, retryable faults — AWS-side blips and Lambda throttles, plus the generic
+    // task failure the short re-crawl/email steps surface for a flaky HTTP call or DB hiccup.
+    const TRANSIENT_ERRORS = [
+      'Lambda.ServiceException',
+      'Lambda.AWSLambdaException',
+      'Lambda.SdkClientException',
+      'Lambda.TooManyRequestsException',
+      'States.TaskFailed',
+    ];
+    // A couple of backoff attempts on the short, cheap, idempotent steps. We deliberately do
+    // NOT retry DispatchDeepResearch: re-dispatching would re-run the long/expensive LLM pass.
+    for (const shortStep of [recheck, sendAlert, sendAlertFromDeep]) {
+      shortStep.addRetry({
+        errors: TRANSIENT_ERRORS,
+        interval: Duration.seconds(2),
+        maxAttempts: 2,
+        backoffRate: 2,
+      });
+    }
+
+    // Log-and-continue: when a step still fails after retries (or a deep-research task times
+    // out), catch it here so just this watch's iteration ends instead of the whole batch.
+    const watchFailed = new sfn.Pass(this, 'WatchFailed', {
+      comment: 'A watch failed after retries; skip it so the rest of the batch still runs.',
+      resultPath: sfn.JsonPath.DISCARD,
+    });
+    for (const step of [recheck, deepResearch, sendAlert, sendAlertFromDeep]) {
+      step.addCatch(watchFailed, { errors: ['States.ALL'], resultPath: '$.error' });
+    }
+
     // If deep research ran, decide purely on its result — it may clear an intent the recheck set,
     // or set one the recheck couldn't trust. Either way the deep verdict wins.
     const deepResolvedChoice = new sfn.Choice(this, 'DeepRuleFired?')
