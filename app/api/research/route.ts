@@ -69,6 +69,9 @@ function checkAuth(req: Request): boolean {
 /**
  * Streams NDJSON: {type:"progress",message} lines while the pipeline runs, then a single
  * {type:"report",result} (or {type:"error",message}). The client renders progress live (G4).
+ *
+ * Rate-limited to RATE_LIMIT_MAX requests/min per IP (429 if exceeded), checked before auth.
+ * Requires `Authorization: Bearer <RESEARCH_API_KEY>` when that env var is set (401 if missing/wrong).
  */
 export async function POST(req: Request) {
   const ip = getClientIp(req);
