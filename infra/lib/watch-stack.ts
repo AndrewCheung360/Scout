@@ -169,9 +169,15 @@ export class ScoutWatchStack extends Stack {
       'Lambda.TooManyRequestsException',
       'States.TaskFailed',
     ];
-    // A couple of backoff attempts on the short, cheap, idempotent steps. We deliberately do
-    // NOT retry DispatchDeepResearch: re-dispatching would re-run the long/expensive LLM pass.
-    for (const shortStep of [recheck, sendAlert, sendAlertFromDeep]) {
+    // A couple of backoff attempts on the short, cheap, idempotent read/crawl/append steps:
+    // EnumerateWatches (read) and Recheck (re-crawl → append; nothing after appendObservation
+    // throws, so a re-run is safe). We deliberately do NOT retry DispatchDeepResearch
+    // (re-dispatching would re-run the long/expensive LLM pass) nor SendAlert/SendAlertFromDeep:
+    // those send the email BEFORE recording the alert row, so an immediate retry after a
+    // post-send DB blip would re-deliver a duplicate. A transient SendAlert failure is simply
+    // not retried here; the 24h cooldown dedup in send-alert.mjs prevents a duplicate email on
+    // the next scheduled run.
+    for (const shortStep of [enumerate, recheck]) {
       shortStep.addRetry({
         errors: TRANSIENT_ERRORS,
         interval: Duration.seconds(2),
