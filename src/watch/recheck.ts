@@ -43,7 +43,12 @@ export type Baseline = {
 export interface RecheckPorts {
   /** Re-crawl current offers for the product (Serper behind OffersAdapter, G5/ADR-0001). */
   offers: OffersAdapter;
-  /** Read the comparison baseline + prior stock state from price_history. */
+  /**
+   * Read the comparison baseline + prior stock state from price_history. The real impl derives the
+   * baseline as the ROLLING MINIMUM (lowest price ever observed); price_drop_pct therefore measures
+   * the drop from that running low, the intended Phase-2 semantics sanctioned by the watch/types.ts
+   * design note ("price when the watch was created, or rolling").
+   */
   getBaseline(productId: string): Promise<Baseline>;
   /** Append-only write to price_history (issue #3 fix lives in db/save.ts). */
   appendObservation(obs: PriceObservation): Promise<void>;

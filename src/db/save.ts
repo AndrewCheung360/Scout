@@ -58,7 +58,17 @@ export async function upsertProduct(client: Queryable, identity: ProductIdentity
     `select id from products where lower(canonical_name) = lower($1) limit 1`,
     [identity.canonicalName],
   );
-  if (byName.rows[0]) return byName.rows[0].id;
+  if (byName.rows[0]) {
+    // Backfill: this run carries strong identifiers the existing (likely name-only) row lacks.
+    // Merge them into the jsonb so future identifier-based dedup matches across names.
+    if (idEntries.length) {
+      await client.query(
+        `update products set identifiers = coalesce(identifiers, '{}'::jsonb) || $2::jsonb where id = $1`,
+        [byName.rows[0].id, JSON.stringify(Object.fromEntries(idEntries))],
+      );
+    }
+    return byName.rows[0].id;
+  }
 
   const inserted = await client.query<{ id: string }>(
     `insert into products (canonical_name, brand, identifiers)
@@ -108,8 +118,16 @@ export async function saveReport(client: Queryable, result: ResearchResult): Pro
          values ($1, $2, $3, $4, $5)`,
         [productId, o.retailer, o.url, price, d.cheapest ? 'high' : 'low'],
       );
-      // Every observed offer is also a point in the price time series the watch loop reads.
-      await appendPriceHistory(client, { productId, retailer: o.retailer, price });
+    }
+
+    // Append exactly ONE trustworthy observation per product per save to price_history — the
+    // append-only series getBaseline() reads via min(price). Prefer the trusted cheapest; else the
+    // lowest priced matched offer. Appending every raw offer would let an untrusted marketplace
+    // outlier (issue #4) become the watch baseline and suppress real price alerts. This mirrors the
+    // recheck path, which also appends only the trusted-cheapest.
+    const trustworthy = pickTrustworthyOffer(d);
+    if (trustworthy) {
+      await appendPriceHistory(client, { productId, retailer: trustworthy.retailer, price: trustworthy.price });
     }
 
     for (const s of d.sources) {
@@ -122,6 +140,23 @@ export async function saveReport(client: Queryable, result: ResearchResult): Pro
   }
 
   return reportId;
+}
+
+/**
+ * The single trustworthy price observation for a dossier entry: the trusted cheapest when present,
+ * else the lowest-priced matched offer. Returns null when nothing carries a parseable price.
+ */
+function pickTrustworthyOffer(d: CandidateDossier): { retailer: string; price: number } | null {
+  if (d.cheapest) {
+    const price = parsePrice(d.cheapest.price);
+    if (price != null) return { retailer: d.cheapest.retailer, price };
+  }
+  let best: { retailer: string; price: number } | null = null;
+  for (const o of d.offers) {
+    const price = parsePrice(o.price);
+    if (price != null && (best == null || price < best.price)) best = { retailer: o.retailer, price };
+  }
+  return best;
 }
 
 /** Best-effort identity for a dossier entry. Today the dossier carries only a name; identifiers

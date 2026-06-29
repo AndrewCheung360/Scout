@@ -53,9 +53,13 @@ function historyPorts(
     offers: new FakeOffers(offers),
     async getBaseline() {
       const prices = appended.map((o) => o.price).filter((p): p is number => p != null);
+      // Mirror the Lambda: most-recent observation that actually recorded a stock state; when
+      // there is no prior stock signal, default to TRUE so a first recheck can't fire a spurious
+      // back_in_stock (which needs a prior OUT-of-stock state).
+      const stockSignals = appended.filter((o) => o.inStock != null);
       return {
         baselinePrice: prices.length ? Math.min(...prices) : null,
-        wasInStock: appended.length ? appended[appended.length - 1]!.inStock : false,
+        wasInStock: stockSignals.length ? stockSignals[stockSignals.length - 1]!.inStock : true,
       };
     },
     async appendObservation(obs) {
@@ -159,6 +163,15 @@ test('back_in_stock fires against the prior (out-of-stock) history, not the just
   const { intent } = await recheckWatch(target(watch([{ type: 'back_in_stock' }])), p);
   assert.ok(intent, 'back-in-stock fires when prior was out of stock');
   assert.equal(intent!.reasons[0]!.type, 'back_in_stock');
+});
+
+test('back_in_stock does NOT fire on the first recheck with no prior stock history', async () => {
+  const offers = [offer('Amazon', 320), offer('Best Buy', 300), offer('Walmart', 310)]; // priced → in stock now
+  // no prior history at all (the first scheduled recheck) → baseline defaults wasInStock TRUE
+  const p = historyPorts(offers, []);
+
+  const { intent } = await recheckWatch(target(watch([{ type: 'back_in_stock' }])), p);
+  assert.equal(intent, null, 'no spurious back_in_stock when there was no prior out-of-stock signal');
 });
 
 test('recheck flags low-confidence matches for deep re-research', async () => {

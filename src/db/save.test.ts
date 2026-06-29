@@ -47,6 +47,14 @@ class FakeClient implements Queryable {
       this.productsById.set(id, { identifiers: JSON.parse(identifiersJson ?? '{}') });
       return { rows: [{ id }] as T[] };
     }
+    // identifier backfill: merge the new identifiers into the existing row's jsonb (|| semantics)
+    if (s.startsWith('update products set identifiers')) {
+      const [id, mergeJson] = params as [string, string];
+      const row = this.productsById.get(id) ?? { identifiers: {} };
+      const merged = { ...((row.identifiers as Record<string, unknown>) ?? {}), ...JSON.parse(mergeJson) };
+      this.productsById.set(id, { identifiers: merged });
+      return { rows: [] as T[] };
+    }
     if (s.startsWith('insert into reports')) {
       return { rows: [{ id: `report-${++this.seq}` }] as T[] };
     }
@@ -82,18 +90,29 @@ function fixture(productName: string): ResearchResult {
   };
 }
 
-test('save appends a price_history row for every offer (issue #3)', async () => {
+test('save records ALL offers but ONE trustworthy price_history observation per product (issue #3/#4)', async () => {
   const c = new FakeClient();
   await saveReport(c, fixture('Acme Widget 100'));
 
   const offers = c.rowsFor('offers');
   const history = c.rowsFor('price_history');
-  assert.equal(offers.length, 2, 'two offers persisted');
-  assert.equal(history.length, 2, 'price_history got one row per offer (was 0 before the fix)');
+  assert.equal(offers.length, 2, 'all offers persisted to the offers table');
+  assert.equal(history.length, 1, 'exactly one trustworthy price_history observation per product (was per-offer before the fix)');
 
-  // the appended price is the parsed numeric, not the raw string
-  const prices = history.map((h) => h.params[2]);
-  assert.deepEqual(prices.sort(), [40, 42]);
+  // the appended price is the trusted cheapest ($40), parsed numeric — not an untrusted outlier
+  assert.equal(history[0]!.params[2], 40);
+  assert.equal(history[0]!.params[1], 'Best Buy', 'observation tagged with the trusted-cheapest retailer');
+});
+
+test('price_history records the lowest matched offer when no trusted cheapest is set', async () => {
+  const c = new FakeClient();
+  const f = fixture('Acme Widget 100');
+  f.dossier[0]!.cheapest = null; // no trusted cheapest → fall back to lowest matched offer
+  await saveReport(c, f);
+
+  const history = c.rowsFor('price_history');
+  assert.equal(history.length, 1, 'still one observation per product');
+  assert.equal(history[0]!.params[2], 40, 'lowest matched offer price');
 });
 
 test('save dedups products by canonical name across runs (issue #3)', async () => {
@@ -104,8 +123,8 @@ test('save dedups products by canonical name across runs (issue #3)', async () =
   const productInserts = c.rowsFor('products');
   assert.equal(productInserts.length, 1, 'only one products row despite two runs (was 2 before the fix)');
 
-  // both runs still record offers + history against the single product id
-  assert.equal(c.rowsFor('price_history').length, 4, 'history accumulates across runs');
+  // both runs still record offers + one trustworthy history observation each against the single product id
+  assert.equal(c.rowsFor('price_history').length, 2, 'one trustworthy observation per run accumulates across runs');
 });
 
 test('upsertProduct reuses an existing row when a strong identifier matches', async () => {
@@ -124,5 +143,16 @@ test('upsertProduct reuses a name-only row when later re-saved with an identifie
   // ... then re-saved once a strong identifier is known: must reuse the existing row, not insert a dup
   const second = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5', identifiers: { asin: 'B09XS7JWHH' } });
   assert.equal(first, second, 'name-only row reused when an identifier appears later');
+  assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
+});
+
+test('upsertProduct backfills identifiers onto a name-matched row so later cross-name dedup matches', async () => {
+  const c = new FakeClient();
+  // first persisted name-only, then re-saved under the same name carrying a strong identifier
+  const first = await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5' });
+  await upsertProduct(c, { canonicalName: 'Sony WH-1000XM5', identifiers: { asin: 'B09XS7JWHH' } });
+  // a third run under a DIFFERENT name but the same ASIN must now resolve to the original row
+  const third = await upsertProduct(c, { canonicalName: 'Sony Noise-Cancelling Headphones', identifiers: { asin: 'B09XS7JWHH' } });
+  assert.equal(first, third, 'backfilled identifier lets a differently-named save dedup to the same row');
   assert.equal(c.rowsFor('products').length, 1, 'no duplicate product row');
 });
