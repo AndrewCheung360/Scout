@@ -13,3 +13,4 @@ Products, offers, price history, and the trustworthy "cheapest" — the accumula
 
 Owns offer matching/dedup (`dedup.ts`) and the catalog/offer/price-history types (`types.ts`).
 Consumes the `OffersAdapter`.
+Persistence (`src/db/save.ts`) keys `products` by identity — strong identifiers (GTIN/UPC/MPN/ASIN, G2) first, falling back to a case-insensitive canonical-name match backed by a unique index (`db/migrations/0003_products_name_unique.sql`) — so repeated saves upsert one row instead of duplicating it, and every saved offer appends an observation to `price_history`. This is what the Phase-2 watch loop's baseline and re-check comparisons read from (fixes issue #3).

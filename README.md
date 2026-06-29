@@ -8,6 +8,7 @@ This repo currently contains:
 
 - **Phase 0 library** (`src/`) — the research pipeline, trust scoring, offer matching/dedup, types, and the optional Postgres persistence layer, all behind a Source Adapter seam.
 - **Phase 1 web app** (`app/`) — a Next.js (App Router) UI that streams pipeline progress and renders the report.
+- **Phase 2 watch/notify pipeline** (`src/watch/`, `src/adapters/notify.ts`, `infra/`) — re-checks watched products, appends `price_history`, evaluates alert rules, and emails alerts via Resend; orchestrated on AWS (Step Functions + Lambda + EventBridge, provisioned with CDK). Code-first — **not deployed**. See `AGENTS.md`.
 - **Scripts & evals** (`scripts/`, `evals/`) — a CLI runner, a DB smoke test, and the eval harness.
 
 ## Layout
@@ -32,6 +33,7 @@ Keys (all have free tiers — personal use ≈ $0); see `.env.example` for links
 - **`TAVILY_API_KEY`** — web research.
 - **`SERPER_API_KEY`** — shopping / prices (the "where to buy / cheapest").
 - **`YOUTUBE_API_KEY`** — optional review videos.
+- **`RESEND_API_KEY`** — optional, Phase 2 watch alert emails; no key → console no-op channel. `RESEND_FROM` optionally overrides the sender (domain must be verified in Resend).
 
 `PROVIDER_PROFILE` selects the model tier: `dev-free` (Gemini Flash, ≈$0), `dev-pro` (Gemini 2.5 Pro), or `quality` (Claude Opus 4.8 synthesis / Haiku 4.5 bulk). See [ADR-0002](docs/adr/0002-stack-and-hosting.md). Adapters return empty results (degrade gracefully) when their key is unset.
 
@@ -41,6 +43,7 @@ Keys (all have free tiers — personal use ≈ $0); see `.env.example` for links
 npm run dev        # web app at http://localhost:3000
 npm run research -- "best noise-cancelling headphones under $300 for glasses"
 npm run eval       # eval harness over evals/golden.json ([-- --limit N] [-- --check-links])
+npm test           # node:test via tsx, over src/**/*.test.ts — no live DB or AWS needed (in-memory fakes)
 npm run typecheck  # tsc --noEmit
 ```
 
@@ -53,6 +56,7 @@ Persistence is best-effort and no-ops without `DATABASE_URL` (Postgres + pgvecto
 ```bash
 psql "$DATABASE_URL" -f db/migrations/0001_init.sql
 psql "$DATABASE_URL" -f db/migrations/0002_pgvector.sql   # needs pgvector (built in on Supabase)
+psql "$DATABASE_URL" -f db/migrations/0003_products_name_unique.sql   # race-safe product upsert (issue #3)
 npx tsx scripts/db-smoke.ts   # verifies the schema without an LLM run
 ```
 

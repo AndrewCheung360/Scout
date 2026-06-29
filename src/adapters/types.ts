@@ -39,3 +39,24 @@ export interface OffersAdapter {
 export interface ReviewAdapter {
   videos(query: string, maxResults?: number): Promise<SearchResult[]>;
 }
+
+/** A transactional message to deliver to a user (Phase 2 watch alerts). */
+export type NotifyMessage = {
+  to: string;
+  subject: string;
+  /** Rendered HTML body. */
+  html: string;
+  /** Plain-text fallback. */
+  text?: string;
+};
+
+/** Result of a delivery attempt — `id` is the provider's message id when available. */
+export type NotifyResult = { id: string | null };
+
+/**
+ * Outbound notification delivery (email first; push/SMS later).
+ * Impl: Resend now, behind this seam so the channel swaps without touching the watch loop (G5).
+ */
+export interface NotifyAdapter {
+  send(message: NotifyMessage): Promise<NotifyResult>;
+}
