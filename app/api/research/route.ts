@@ -5,11 +5,78 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
+// ---------------------------------------------------------------------------
+// Rate limiting — module-level store (fine for single-process Next.js)
+// ---------------------------------------------------------------------------
+
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+interface Bucket {
+  count: number;
+  windowStart: number;
+}
+
+const rateLimitStore = new Map<string, Bucket>();
+
+function getClientIp(req: Request): string {
+  const xff = req.headers.get('x-forwarded-for');
+  if (xff) {
+    const first = xff.split(',')[0].trim();
+    if (first) return first;
+  }
+  const xri = req.headers.get('x-real-ip');
+  if (xri) return xri.trim();
+  return 'unknown';
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const bucket = rateLimitStore.get(ip);
+  if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  bucket.count += 1;
+  return bucket.count > RATE_LIMIT_MAX;
+}
+
+// ---------------------------------------------------------------------------
+// Auth helper
+// ---------------------------------------------------------------------------
+
+function checkAuth(req: Request): boolean {
+  const requiredKey = process.env.RESEARCH_API_KEY;
+  if (!requiredKey) return true; // auth disabled locally
+  const authHeader = req.headers.get('authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  return token === requiredKey;
+}
+
+// ---------------------------------------------------------------------------
+// Route handler
+// ---------------------------------------------------------------------------
+
 /**
  * Streams NDJSON: {type:"progress",message} lines while the pipeline runs, then a single
  * {type:"report",result} (or {type:"error",message}). The client renders progress live (G4).
  */
 export async function POST(req: Request) {
+  if (!checkAuth(req)) {
+    return new Response(JSON.stringify({ type: 'error', message: 'unauthorized' }) + '\n', {
+      status: 401,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
+  const ip = getClientIp(req);
+  if (isRateLimited(ip)) {
+    return new Response(JSON.stringify({ type: 'error', message: 'rate limit exceeded' }) + '\n', {
+      status: 429,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
   let query = '';
   try {
     ({ query } = (await req.json()) as { query: string });
