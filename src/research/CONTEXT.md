@@ -14,5 +14,5 @@ Intent → a cited, trust-scored comparison report. The core IP.
 ## Responsibilities
 
 Owns the pipeline stages (`pipeline.ts`), credibility scoring (`trust.ts`), and rendering (`render.ts`).
-Consumes the `SearchAdapter` / `ReviewAdapter` (evidence) and the catalog context (offers/dedup).
+Consumes the `SearchAdapter` / `ReviewAdapter` (evidence) and the catalog context (offers/dedup, plus `name-match.ts` to join report product names back to dossier entries).
 Emits structured reports (Zod schema in `types.ts`).
