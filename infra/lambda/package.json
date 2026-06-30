@@ -1,0 +1,10 @@
+{
+  "name": "scout-lambda",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Runtime dependencies for Scout watch-pipeline Lambda handlers. See bundle.sh.",
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

@@ -62,6 +62,14 @@ class FakeClient implements Queryable {
       this.productsById.set(id, { identifiers: merged });
       return { rows: [] as T[] };
     }
+    // identifier backfill: merge the new identifiers into the existing row's jsonb (|| semantics)
+    if (s.startsWith('update products set identifiers')) {
+      const [id, mergeJson] = params as [string, string];
+      const row = this.productsById.get(id) ?? { identifiers: {} };
+      const merged = { ...((row.identifiers as Record<string, unknown>) ?? {}), ...JSON.parse(mergeJson) };
+      this.productsById.set(id, { identifiers: merged });
+      return { rows: [] as T[] };
+    }
     if (s.startsWith('insert into reports')) {
       return { rows: [{ id: `report-${++this.seq}` }] as T[] };
     }
