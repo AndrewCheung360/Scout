@@ -16,7 +16,9 @@ export type OfferAggregate = {
   matched: ShoppingOffer[];
   /** The badge-worthy cheapest: cheapest from a TRUSTED retailer in the reliable cluster, or null. */
   cheapest: ShoppingOffer | null;
-  /** The lowest-overall offer if it's notably below the trusted cheapest (e.g. used/refurb/grey). */
+  /** The cheapest untrusted-retailer offer (searched pre-cluster-floor so used/refurb
+   * deals aren't dropped before this check runs) if it's notably below the trusted
+   * cheapest and above the sanity floor, e.g. used/refurb/grey. */
   lowestUntrusted: ShoppingOffer | null;
   /** Per-aggregate match confidence — gates whether we show a "✓ cheapest" badge (G2). */
   matchConfidence: 'high' | 'low';

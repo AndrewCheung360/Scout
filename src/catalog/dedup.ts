@@ -7,7 +7,11 @@
  *   1. match on brand + a model token, drop accessories;
  *   2. keep the reliable price cluster (drop wild outliers vs the median);
  *   3. report the cheapest only from a TRUSTED retailer within that cluster;
- *   4. surface a notably-lower untrusted offer as "possibly used/refurb", not as the badge.
+ *   4. surface a notably-lower untrusted offer as "possibly used/refurb", not as the badge —
+ *      searched from the pre-cluster-floor matches (step 1's output) so a genuinely cheap
+ *      used/refurb offer below the step-2 floor still gets caveated instead of silently
+ *      dropped, bounded by a sanity floor (`MIN_UNTRUSTED_FRACTION`) that still excludes
+ *      data artifacts (typos, mis-parsed currency, scraping errors).
  *
  * (Identifier-first matching via GTIN/UPC is the next increment once we ingest them.)
  */
@@ -29,6 +33,10 @@ const TRUSTED_RETAILERS = [
 const TRUSTED_PATTERNS = TRUSTED_RETAILERS.map(
   (t) => new RegExp(`(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i'),
 );
+
+/** Below this fraction of the trusted price, an untrusted offer is treated as a data artifact
+ * (typo, mis-parsed currency, scraping error) rather than a genuine used/refurb deal. */
+const MIN_UNTRUSTED_FRACTION = 0.2;
 
 function isTrusted(retailer: string): boolean {
   const r = retailer.toLowerCase().trim();
@@ -64,6 +72,9 @@ export function matchOffers(candidate: string, offers: ShoppingOffer[]): OfferAg
 
   // 2. reliable cluster: drop wild outliers vs the median.
   const med0 = median(matched.map((o) => o.priceValue!));
+  // Save pre-floor matches so the caveat detector (step 4) can find cheap untrusted offers
+  // that fall below the floor, rather than having them silently excluded before detection runs.
+  const preFloorMatched = matched;
   if (!Number.isNaN(med0)) matched = matched.filter((o) => o.priceValue! >= med0 * 0.5 && o.priceValue! <= med0 * 3);
   const med = median(matched.map((o) => o.priceValue!));
 
@@ -74,12 +85,17 @@ export function matchOffers(candidate: string, offers: ShoppingOffer[]): OfferAg
   // 3. cheapest from a trusted retailer within the cluster.
   const trusted = matched.filter((o) => isTrusted(o.retailer));
   const cheapestTrusted = trusted.length ? trusted.reduce((a, b) => (a.priceValue! <= b.priceValue! ? a : b)) : null;
-  const cheapestOverall = matched.reduce((a, b) => (a.priceValue! <= b.priceValue! ? a : b));
 
   // 4. flag a notably-lower untrusted offer (likely used/refurb/grey) rather than badging it.
+  // Search preFloorMatched (all step-1 matches before the cluster floor) so offers excluded by the
+  // floor can surface as a caveat instead of being silently dropped before detection runs.
+  const cheapestUntrusted = preFloorMatched
+    .filter((o) => !isTrusted(o.retailer))
+    .filter((o) => !cheapestTrusted || o.priceValue! >= cheapestTrusted.priceValue! * MIN_UNTRUSTED_FRACTION)
+    .reduce<ShoppingOffer | null>((best, o) => (best == null || o.priceValue! < best.priceValue! ? o : best), null);
   const lowestUntrusted =
-    cheapestTrusted && cheapestOverall.priceValue! < cheapestTrusted.priceValue! * 0.85 && cheapestOverall !== cheapestTrusted
-      ? cheapestOverall
+    cheapestTrusted && cheapestUntrusted && cheapestUntrusted.priceValue! < cheapestTrusted.priceValue! * 0.85
+      ? cheapestUntrusted
       : null;
 
   // Confidence: enough corroboration, a model token, a trusted cheapest, and it's not a low outlier.
