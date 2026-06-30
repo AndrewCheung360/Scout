@@ -37,12 +37,24 @@ test('hyphen vs space separator scores 1', () => {
   assert.equal(productNameSimilarity('Sony WH-1000XM5', 'Sony WH 1000XM5'), 1);
 });
 
-test('extra adjectives (longer synthesis name) scores 1 via containment', () => {
-  assert.equal(productNameSimilarity('Sony WH-1000XM5', 'Sony WH-1000XM5 Wireless Noise Cancelling Headphones'), 1);
+test('a couple extra adjectives still scores above threshold via Jaccard', () => {
+  const score = productNameSimilarity('Sony WH-1000XM5', 'Sony WH-1000XM5 Wireless');
+  assert.ok(score >= 0.6, `expected ≥ 0.6, got ${score}`);
 });
 
-test('extra adjectives in either direction scores 1', () => {
-  assert.equal(productNameSimilarity('Sony WH1000XM5 Wireless', 'Sony WH-1000XM5'), 1);
+test('many extra adjectives no longer force a match (containment removed)', () => {
+  // compact-key containment used to score this 1; without it, too much
+  // padding dilutes the Jaccard score below threshold — a missed match is
+  // safer than the false-positive containment risked on sibling SKUs.
+  const score = productNameSimilarity('Sony WH-1000XM5', 'Sony WH-1000XM5 Wireless Noise Cancelling Headphones');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score}`);
+});
+
+test('extra adjective combined with punctuation difference no longer matches', () => {
+  // hyphen presence changes tokenization ("wh1000xm5" vs "wh"+"1000xm5"),
+  // so this case relied entirely on containment and now correctly misses.
+  const score = productNameSimilarity('Sony WH1000XM5 Wireless', 'Sony WH-1000XM5');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score}`);
 });
 
 test('word-order variation scores 1 via Jaccard', () => {
@@ -51,9 +63,9 @@ test('word-order variation scores 1 via Jaccard', () => {
   assert.ok(score >= 0.6, `expected ≥ 0.6, got ${score}`);
 });
 
-test('abbreviation Gen vs Generation scores 1 via containment', () => {
-  // "Gen" compact = "gen" is a substring of "generation"
-  assert.equal(productNameSimilarity('Apple AirPods Pro 2nd Gen', 'Apple AirPods Pro 2nd Generation'), 1);
+test('abbreviation Gen vs Generation scores above threshold via Jaccard', () => {
+  const score = productNameSimilarity('Apple AirPods Pro 2nd Gen', 'Apple AirPods Pro 2nd Generation');
+  assert.ok(score >= 0.6, `expected ≥ 0.6, got ${score}`);
 });
 
 test('different model numbers do NOT match (XM5 vs XM4)', () => {
@@ -86,6 +98,21 @@ test('tier word distinguishes products (PS5 vs PS5 Pro)', () => {
   assert.ok(score < 0.6, `expected < 0.6, got ${score} — Pro is a different SKU`);
 });
 
+test('digit-glued suffix does NOT match (iPhone 5 vs iPhone 5s)', () => {
+  const score = productNameSimilarity('iPhone 5', 'iPhone 5s');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — 5s is a different SKU`);
+});
+
+test('digit-glued suffix does NOT match (Pixel 9 vs Pixel 9a)', () => {
+  const score = productNameSimilarity('Pixel 9', 'Pixel 9a');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — 9a is a different SKU`);
+});
+
+test('tier word distinguishes products (Galaxy S23 vs Galaxy S23 FE)', () => {
+  const score = productNameSimilarity('Galaxy S23', 'Galaxy S23 FE');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — FE is a different SKU`);
+});
+
 // ---------------------------------------------------------------------------
 // findDossierMatch
 // ---------------------------------------------------------------------------
@@ -114,10 +141,10 @@ test('findDossierMatch matches despite extra adjectives in synthesis name', () =
   assert.equal(result?.product, 'Sony WH-1000XM5');
 });
 
-test('findDossierMatch matches despite extra adjectives in dossier name', () => {
-  const dossier = [entry('Sony WH-1000XM5 Wireless Noise Cancelling'), entry('Bose QC45')];
+test('findDossierMatch matches despite a single extra adjective in dossier name', () => {
+  const dossier = [entry('Sony WH-1000XM5 Wireless'), entry('Bose QC45')];
   const result = findDossierMatch('Sony WH-1000XM5', dossier);
-  assert.equal(result?.product, 'Sony WH-1000XM5 Wireless Noise Cancelling');
+  assert.equal(result?.product, 'Sony WH-1000XM5 Wireless');
 });
 
 test('findDossierMatch matches Gen vs Generation abbreviation', () => {
