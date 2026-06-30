@@ -34,9 +34,18 @@ The watch loop and its AWS orchestration are built (code-first; **not deployed**
 
 The short re-crawl (Serper HTTP) runs in Lambda. The long/expensive LLM re-research step must **never** block a Lambda (it bills wall-clock while awaiting the model). It runs behind a Step Functions `waitForTaskToken` integration: `dispatch-deep.mjs` enqueues the work + task token to SQS and returns immediately; an out-of-band Fargate worker runs the model and calls `SendTaskSuccess` to resume the machine.
 
-### Deploy prerequisites (captain-gated, separate from this work — do NOT `cdk deploy` casually)
+### Deploy (captain-gated — do NOT run `cdk deploy` without AWS creds + secrets in place)
 
-1. An AWS account + credentials, and a one-time `cdk bootstrap` of the target account/region.
-2. Secrets created in AWS Secrets Manager (referenced by name, never in code/templates): `scout/database-url`, `scout/serper-api-key`, `scout/resend-api-key`.
-3. `RESEND_API_KEY` (and a Resend-verified sender domain via `RESEND_FROM`) for real email delivery.
-4. The Lambda bundling step that populates `infra/lambda/shared/` from `src/` (see `infra/lambda/README.md`).
+Full runbook: `docs/deploy.md`. Short version:
+
+1. Create three Secrets Manager secrets: `scout/database-url`, `scout/serper-api-key`, `scout/resend-api-key`.
+2. Run `cdk bootstrap aws://<ACCOUNT>/<REGION>` once per account/region.
+3. Run `./infra/lambda/bundle.sh` — compiles `src/watch`, `src/adapters`, `src/catalog` to `infra/lambda/shared/` and installs `pg` runtime dep.
+4. `cd infra && npx cdk deploy`.
+
+### Lambda bundling
+
+`infra/lambda/bundle.sh` is the pre-deploy bundling script.
+It uses `esbuild` (root `node_modules/.bin/esbuild`) to transpile TypeScript to ESM JavaScript, outputting to `infra/lambda/shared/` (gitignored, generated).
+`infra/lambda/package.json` declares `pg` as the only runtime npm dep (`@aws-sdk/*` is provided by the Lambda Node 20.x runtime).
+The `shared/` output directory and `lambda/node_modules/` are both gitignored; regenerate them by re-running `bundle.sh`.
