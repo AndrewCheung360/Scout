@@ -71,6 +71,21 @@ test('same brand, different model does not reach threshold', () => {
   assert.ok(score < 0.6, `expected < 0.6, got ${score}`);
 });
 
+test('model number suffix extension does NOT match (XM5 vs XM50)', () => {
+  const score = productNameSimilarity('Sony XM5', 'Sony XM50');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — XM50 is a different model than XM5`);
+});
+
+test('tier word distinguishes products (iPhone 16 vs iPhone 16 Pro)', () => {
+  const score = productNameSimilarity('iPhone 16', 'iPhone 16 Pro');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — Pro is a different SKU`);
+});
+
+test('tier word distinguishes products (PS5 vs PS5 Pro)', () => {
+  const score = productNameSimilarity('PS5', 'PS5 Pro');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — Pro is a different SKU`);
+});
+
 // ---------------------------------------------------------------------------
 // findDossierMatch
 // ---------------------------------------------------------------------------
@@ -132,4 +147,19 @@ test('findDossierMatch picks XM4 when synthesis says XM4', () => {
   const dossier = [entry('Sony WH-1000XM5'), entry('Sony WH-1000XM4')];
   const result = findDossierMatch('Sony WH-1000XM4', dossier);
   assert.equal(result?.product, 'Sony WH-1000XM4');
+});
+
+test('findDossierMatch does not confuse a base model with its Pro variant', () => {
+  const dossier = [entry('iPhone 16 Pro'), entry('iPhone 16')];
+  const result = findDossierMatch('iPhone 16', dossier);
+  assert.equal(result?.product, 'iPhone 16');
+});
+
+test('findDossierMatch prefers the exact match over a tied padded-name containment hit', () => {
+  // Both entries score 1 against "Sony WH-1000XM5": the padded name via
+  // containment, the exact name via equality. Order shouldn't matter — the
+  // closer (exact) match must win regardless of which entry comes first.
+  const dossier = [entry('Sony WH-1000XM5 Wireless Headphones'), entry('Sony WH-1000XM5')];
+  const result = findDossierMatch('Sony WH-1000XM5', dossier);
+  assert.equal(result?.product, 'Sony WH-1000XM5');
 });
