@@ -41,7 +41,12 @@ export async function runResearch(query: string, opts: RunOptions = {}): Promise
   const dossier: CandidateDossier[] = [];
   for (const c of candidates) {
     emit(`Gathering reviews, dissent, and offers for ${c.name}…`);
-    const raw = [...(await adapters.search.search(`${c.name} review`, 3)), ...(await adapters.search.search(`${c.name} reddit problems`, 2))];
+    const [textResults, redditResults, videoResults] = await Promise.all([
+      adapters.search.search(`${c.name} review`, 3),
+      adapters.search.search(`${c.name} reddit problems`, 2),
+      adapters.reviews.videos(c.name),
+    ]);
+    const raw = [...textResults, ...redditResults, ...videoResults];
     const sources = raw.map(scoreSource);
     const agg = matchOffers(c.name, await adapters.offers.offers(c.name));
     const sorted = [...agg.matched].sort((a, b) => a.priceValue! - b.priceValue!);
