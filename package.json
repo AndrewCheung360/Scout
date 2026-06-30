@@ -10,7 +10,7 @@
     "start": "next start",
     "research": "tsx scripts/research.ts",
     "eval": "tsx evals/run.ts",
-    "test": "tsx --test \"src/**/*.test.ts\" && vitest run",
+    "test": "tsx --test \"src/db/**/*.test.ts\" \"src/watch/**/*.test.ts\" && vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
