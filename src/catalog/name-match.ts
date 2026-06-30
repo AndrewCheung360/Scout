@@ -39,7 +39,7 @@ function wordTokens(name: string): Set<string> {
       .replace(/[^a-z0-9]+/g, ' ')
       .trim()
       .split(/\s+/)
-      .filter((t) => t.length > 1),
+      .filter((t) => t.length > 0),
   );
 }
 

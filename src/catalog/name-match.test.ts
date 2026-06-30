@@ -98,6 +98,16 @@ test('tier word distinguishes products (PS5 vs PS5 Pro)', () => {
   assert.ok(score < 0.6, `expected < 0.6, got ${score} — Pro is a different SKU`);
 });
 
+test('bare single-digit model number does NOT match a different digit (iPhone 5 vs iPhone 6)', () => {
+  const score = productNameSimilarity('iPhone 5', 'iPhone 6');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — 5 and 6 are different SKUs`);
+});
+
+test('bare single-digit model number does NOT match a different digit (Pixel 9 vs Pixel 8)', () => {
+  const score = productNameSimilarity('Pixel 9', 'Pixel 8');
+  assert.ok(score < 0.6, `expected < 0.6, got ${score} — 9 and 8 are different SKUs`);
+});
+
 test('digit-glued suffix does NOT match (iPhone 5 vs iPhone 5s)', () => {
   const score = productNameSimilarity('iPhone 5', 'iPhone 5s');
   assert.ok(score < 0.6, `expected < 0.6, got ${score} — 5s is a different SKU`);
