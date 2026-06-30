@@ -1,8 +1,8 @@
+import { findDossierMatch } from '../catalog/name-match.js';
 import type { ResearchResult } from './types.js';
 
 /** Render a ResearchResult as Markdown (CLI / file output; the web UI renders the same data in Phase 1). */
 export function renderMarkdown({ query, intent, report: r, dossier }: ResearchResult): string {
-  const byProduct = new Map(dossier.map((d) => [d.product, d]));
   const crit = intent.criteria;
   let m = `# Scout report\n\n**Query:** ${query}\n\n**Confidence:** ${r.confidence} — ${r.confidenceReason}\n\n## Summary\n\n${r.summary}\n\n## Top picks\n\n`;
   for (const rec of r.recommendations) m += `- **${rec.label}: ${rec.product}** — ${rec.rationale} _(${rec.trustNote})_\n`;
@@ -16,7 +16,7 @@ export function renderMarkdown({ query, intent, report: r, dossier }: ResearchRe
   m += `\n## Details\n`;
   for (const p of r.perProduct) {
     m += `\n### ${p.product}\n\n`;
-    const d = byProduct.get(p.product);
+    const d = findDossierMatch(p.product, dossier);
     if (d?.cheapest) m += `**Cheapest:** ${d.cheapest.price} at ${d.cheapest.retailer} — ${d.cheapest.url}\n\n`;
     else if (d) m += `**Cheapest:** _${d.cheapestNote ?? 'withheld'}_\n\n`;
     m += `**Pros:**\n`;

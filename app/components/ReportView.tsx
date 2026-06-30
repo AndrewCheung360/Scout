@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { findDossierMatch } from '@/src/catalog/name-match';
 import type { ResearchResult } from '@/src/research/types';
 
 const CONFIDENCE_STYLES: Record<string, string> = {
@@ -33,7 +34,6 @@ function flagStyle(flag: string): string {
 
 export default function ReportView({ result }: { result: ResearchResult }) {
   const { query, intent, report, dossier } = result;
-  const byProduct = new Map(dossier.map((d) => [d.product, d]));
   const crit = intent.criteria;
 
   const seen = new Set<string>();
@@ -119,7 +119,7 @@ export default function ReportView({ result }: { result: ResearchResult }) {
       <section className="space-y-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Details</h2>
         {report.perProduct.map((p, i) => {
-          const d = byProduct.get(p.product);
+          const d = findDossierMatch(p.product, dossier);
           return (
             <div key={i} className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
