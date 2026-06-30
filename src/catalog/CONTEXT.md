@@ -11,6 +11,6 @@ Products, offers, price history, and the trustworthy "cheapest" — the accumula
 
 ## Responsibilities
 
-Owns offer matching/dedup (`dedup.ts`) and the catalog/offer/price-history types (`types.ts`).
+Owns offer matching/dedup (`dedup.ts`), the catalog/offer/price-history types (`types.ts`), and fuzzy product-name matching (`name-match.ts`) — joins an LLM-written report product name back to its dossier entry (compact-key equality or word-token Jaccard ≥ 0.6, guarded against tier-word false positives like "iPhone 16" vs "iPhone 16 Pro") since the report and dossier are free-text, not identifier-linked. Consumed by `src/research/render.ts` and `app/components/ReportView.tsx` to look up cheapest-price/offer data for each reported product (fixes issue #1).
 Consumes the `OffersAdapter`.
 Persistence (`src/db/save.ts`) keys `products` by identity — strong identifiers (GTIN/UPC/MPN/ASIN, G2) first, falling back to a case-insensitive canonical-name match backed by a unique index (`db/migrations/0003_products_name_unique.sql`) — so repeated saves upsert one row instead of duplicating it, and every saved offer appends an observation to `price_history`. This is what the Phase-2 watch loop's baseline and re-check comparisons read from (fixes issue #3).
