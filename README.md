@@ -34,6 +34,7 @@ Keys (all have free tiers — personal use ≈ $0); see `.env.example` for links
 - **`SERPER_API_KEY`** — shopping / prices (the "where to buy / cheapest").
 - **`YOUTUBE_API_KEY`** — optional review videos.
 - **`RESEND_API_KEY`** — optional, Phase 2 watch alert emails; no key → console no-op channel. `RESEND_FROM` optionally overrides the sender (domain must be verified in Resend).
+- **`RESEARCH_API_KEY`** — optional, guards `POST /api/research`; callers must send `Authorization: Bearer <key>`. No key set → auth disabled (local dev). The route is also rate-limited to 5 requests/min per IP regardless of auth.
 
 `PROVIDER_PROFILE` selects the model tier: `dev-free` (Gemini Flash, ≈$0), `dev-pro` (Gemini 2.5 Pro), or `quality` (Claude Opus 4.8 synthesis / Haiku 4.5 bulk). See [ADR-0002](docs/adr/0002-stack-and-hosting.md). Adapters return empty results (degrade gracefully) when their key is unset.
 
@@ -43,7 +44,7 @@ Keys (all have free tiers — personal use ≈ $0); see `.env.example` for links
 npm run dev        # web app at http://localhost:3000
 npm run research -- "best noise-cancelling headphones under $300 for glasses"
 npm run eval       # eval harness over evals/golden.json ([-- --limit N] [-- --check-links])
-npm test           # node:test via tsx, over src/**/*.test.ts — no live DB or AWS needed (in-memory fakes)
+npm test           # node:test (src/**/*.test.ts) + vitest (app/**/*.test.ts) — no live DB or AWS needed (in-memory fakes)
 npm run typecheck  # tsc --noEmit
 ```
 
