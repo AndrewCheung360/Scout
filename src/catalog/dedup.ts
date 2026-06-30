@@ -7,7 +7,11 @@
  *   1. match on brand + a model token, drop accessories;
  *   2. keep the reliable price cluster (drop wild outliers vs the median);
  *   3. report the cheapest only from a TRUSTED retailer within that cluster;
- *   4. surface a notably-lower untrusted offer as "possibly used/refurb", not as the badge.
+ *   4. surface a notably-lower untrusted offer as "possibly used/refurb", not as the badge —
+ *      searched from the pre-cluster-floor matches (step 1's output) so a genuinely cheap
+ *      used/refurb offer below the step-2 floor still gets caveated instead of silently
+ *      dropped, bounded by a sanity floor (`MIN_UNTRUSTED_FRACTION`) that still excludes
+ *      data artifacts (typos, mis-parsed currency, scraping errors).
  *
  * (Identifier-first matching via GTIN/UPC is the next increment once we ingest them.)
  */
