@@ -47,6 +47,7 @@ export async function runResearch(query: string, opts: RunOptions = {}): Promise
     const sorted = [...agg.matched].sort((a, b) => a.priceValue! - b.priceValue!);
     const topOffers = sorted.slice(0, 6);
     if (agg.cheapest && !topOffers.some((o) => o.url === agg.cheapest!.url)) topOffers.push(agg.cheapest);
+    if (agg.lowestUntrusted && !topOffers.some((o) => o.url === agg.lowestUntrusted!.url)) topOffers.push(agg.lowestUntrusted);
     dossier.push({
       product: c.name,
       sources: sources.map((s) => ({ url: s.url, host: s.host, credibility: s.credibility, flags: s.flags, snippet: s.content.slice(0, 400) })),
