@@ -101,6 +101,37 @@ test('cheapest trusted price is always from within the cluster', () => {
   assert.ok(result.cheapest!.priceValue! >= 150, 'cheapest trusted is within the cluster floor');
 });
 
+test('absurdly low untrusted price (scraping artifact) is not surfaced as used/refurb', () => {
+  // $1 is almost certainly a parsing error, not a genuine used/refurb deal — must not surface.
+  const offers = [
+    offer('Amazon', 280),
+    offer('Best Buy', 300),
+    offer('Walmart', 320),
+    offer('eBay', 1),
+  ];
+
+  const result = matchOffers(CANDIDATE, offers);
+
+  assert.equal(result.lowestUntrusted, null, 'garbage-low untrusted price is filtered out, not flagged');
+});
+
+test('a genuinely cheap untrusted offer still surfaces even when a garbage price is also present', () => {
+  // The $1 garbage price must not win the cheapest-untrusted comparison and mask the real $120 deal.
+  const offers = [
+    offer('Amazon', 280),
+    offer('Best Buy', 300),
+    offer('Walmart', 320),
+    offer('eBay', 120),
+    offer('SomeOtherShop', 1),
+  ];
+
+  const result = matchOffers(CANDIDATE, offers);
+
+  assert.ok(result.lowestUntrusted, 'legitimate cheap offer surfaces despite a garbage price in the pool');
+  assert.equal(result.lowestUntrusted!.retailer, 'eBay');
+  assert.equal(result.lowestUntrusted!.priceValue, 120);
+});
+
 test('accessories are excluded from matching', () => {
   const offers = [
     offer('Amazon', 280),

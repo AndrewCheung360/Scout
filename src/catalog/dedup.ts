@@ -30,6 +30,10 @@ const TRUSTED_PATTERNS = TRUSTED_RETAILERS.map(
   (t) => new RegExp(`(?:^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[^a-z0-9]|$)`, 'i'),
 );
 
+/** Below this fraction of the trusted price, an untrusted offer is treated as a data artifact
+ * (typo, mis-parsed currency, scraping error) rather than a genuine used/refurb deal. */
+const MIN_UNTRUSTED_FRACTION = 0.2;
+
 function isTrusted(retailer: string): boolean {
   const r = retailer.toLowerCase().trim();
   // marketplace third-party sellers surface as "Walmart - seller", "eBay - seller",
@@ -83,6 +87,7 @@ export function matchOffers(candidate: string, offers: ShoppingOffer[]): OfferAg
   // floor can surface as a caveat instead of being silently dropped before detection runs.
   const cheapestUntrusted = preFloorMatched
     .filter((o) => !isTrusted(o.retailer))
+    .filter((o) => !cheapestTrusted || o.priceValue! >= cheapestTrusted.priceValue! * MIN_UNTRUSTED_FRACTION)
     .reduce<ShoppingOffer | null>((best, o) => (best == null || o.priceValue! < best.priceValue! ? o : best), null);
   const lowestUntrusted =
     cheapestTrusted && cheapestUntrusted && cheapestUntrusted.priceValue! < cheapestTrusted.priceValue! * 0.85
