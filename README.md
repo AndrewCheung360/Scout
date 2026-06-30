@@ -44,7 +44,7 @@ Keys (all have free tiers — personal use ≈ $0); see `.env.example` for links
 npm run dev        # web app at http://localhost:3000
 npm run research -- "best noise-cancelling headphones under $300 for glasses"
 npm run eval       # eval harness over evals/golden.json ([-- --limit N] [-- --check-links])
-npm test           # node:test (src/**/*.test.ts) + vitest (app/**/*.test.ts) — no live DB or AWS needed (in-memory fakes)
+npm test           # node:test (src/db, src/watch) + vitest (app/, src/__tests__/) — no live DB or AWS needed (in-memory fakes)
 npm run typecheck  # tsc --noEmit
 ```
 
